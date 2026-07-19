@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import {
   departmentsByFaculty,
   faculties,
+  normalizeStudentIdInput,
   type Faculty,
 } from "@/lib/candidate-options";
 import SiteBackground from "../site-background";
@@ -148,10 +149,7 @@ export default function CompleteProfilePage() {
                   title="Enter 6 digits followed by one English letter"
                   value={studentId}
                   onChange={(event) => {
-                    const value = event.target.value;
-                    setStudentId(
-                      value.replace(/[a-z]$/i, (letter) => letter.toUpperCase()),
-                    );
+                    setStudentId(normalizeStudentIdInput(event.target.value));
                   }}
                   disabled={isSubmitting}
                   required

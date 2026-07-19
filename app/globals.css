@@ -2219,6 +2219,7 @@ html {
 }
 
 .application-details-grid input,
+.application-details-grid select,
 .application-preferences-grid select,
 .application-comment textarea {
   width: 100%;
@@ -2234,6 +2235,7 @@ html {
 }
 
 .application-details-grid input,
+.application-details-grid select,
 .application-preferences-grid select {
   min-height: 3rem;
   padding-inline: 0.9rem;
@@ -2245,10 +2247,23 @@ html {
 }
 
 .application-preferences-grid select:focus,
+.application-details-grid select:focus,
 .application-comment textarea:focus {
   border-color: rgb(51 174 218 / 76%);
   background: #ffffff;
   box-shadow: 0 0 0 3px rgb(51 174 218 / 14%);
+}
+
+.application-upload-note {
+  margin-top: 0.45rem !important;
+  color: #9a6700 !important;
+  font-size: 0.76rem !important;
+  font-weight: 650;
+}
+
+.application-upload-note strong {
+  color: #7a5200;
+  font-weight: 850;
 }
 
 .application-dropzone {
@@ -2731,6 +2746,29 @@ html {
   border-color: rgb(51 174 218 / 76%);
   background: #ffffff;
   box-shadow: 0 0 0 3px rgb(51 174 218 / 14%);
+}
+
+.signup-field--error,
+.signup-field--error:focus-within {
+  border-color: rgb(190 24 93 / 62%);
+  background: rgb(255 241 244 / 72%);
+  box-shadow: 0 0 0 3px rgb(190 24 93 / 10%);
+}
+
+.signup-field-error,
+.signup-field-status {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.signup-field-error {
+  color: #be123c;
+}
+
+.signup-field-status {
+  color: rgb(0 36 84 / 48%);
 }
 
 .signup-field input,

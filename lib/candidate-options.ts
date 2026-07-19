@@ -42,3 +42,18 @@ export function isDepartmentForFaculty(
 ) {
   return (departmentsByFaculty[faculty] as readonly string[]).includes(department);
 }
+
+export function normalizeStudentIdInput(value: string) {
+  let normalized = "";
+
+  for (const character of value) {
+    if (normalized.length < 6 && /[0-9]/.test(character)) {
+      normalized += character;
+    } else if (normalized.length === 6 && /[a-z]/i.test(character)) {
+      normalized += character.toUpperCase();
+      break;
+    }
+  }
+
+  return normalized;
+}

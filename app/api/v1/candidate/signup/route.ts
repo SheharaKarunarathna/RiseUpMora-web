@@ -133,8 +133,27 @@ export async function POST(request: Request) {
       "code" in error &&
       error.code === "23505"
     ) {
+      const constraint =
+        "constraint" in error && typeof error.constraint === "string"
+          ? error.constraint
+          : "";
+
+      if (constraint.includes("student_id")) {
+        return NextResponse.json(
+          {
+            field: "studentId",
+            error:
+              "This university ID is already registered. Contact an OC member if you have any doubt.",
+          },
+          { status: 409 },
+        );
+      }
+
       return NextResponse.json(
-        { error: "An account with this email or student ID already exists" },
+        {
+          field: "email",
+          error: "This email address is already registered.",
+        },
         { status: 409 },
       );
     }

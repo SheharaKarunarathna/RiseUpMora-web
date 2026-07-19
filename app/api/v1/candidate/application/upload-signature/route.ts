@@ -2,12 +2,16 @@ import { v2 as cloudinary } from "cloudinary";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import {
+  isDepartmentForFaculty,
+  isFaculty,
+} from "@/lib/candidate-options";
 import { getCandidateCvAsset } from "@/lib/cloudinary-cv";
 import { query } from "@/lib/db";
 
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user || session.user.role !== "candidate") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -41,10 +45,30 @@ export async function POST() {
     faculty: string;
     department: string;
   };
+  let requestedDepartment = candidate.department;
+  try {
+    const body = (await request.json()) as { department?: unknown };
+    if (typeof body.department === "string") {
+      requestedDepartment = body.department.trim();
+    }
+  } catch {
+    // Keep the candidate's current department for older clients without a JSON body.
+  }
+
+  if (
+    !isFaculty(candidate.faculty) ||
+    !isDepartmentForFaculty(candidate.faculty, requestedDepartment)
+  ) {
+    return NextResponse.json(
+      { error: "Select a valid department for your faculty" },
+      { status: 400 },
+    );
+  }
+
   const asset = getCandidateCvAsset({
     studentId: candidate.student_id,
     faculty: candidate.faculty,
-    department: candidate.department,
+    department: requestedDepartment,
   });
   const timestamp = Math.floor(Date.now() / 1000);
   const uploadParameters = {

@@ -2,6 +2,10 @@ import { v2 as cloudinary } from "cloudinary";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import {
+  isDepartmentForFaculty,
+  isFaculty,
+} from "@/lib/candidate-options";
 import { getCandidateCvAsset } from "@/lib/cloudinary-cv";
 import { query } from "@/lib/db";
 
@@ -104,6 +108,7 @@ export async function POST(request: Request) {
     publicId?: unknown;
     preferences?: unknown;
     comment?: unknown;
+    department?: unknown;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -117,6 +122,8 @@ export async function POST(request: Request) {
     ? body.preferences.map((value) => (typeof value === "string" ? value.trim() : ""))
     : [];
   const comment = typeof body.comment === "string" ? body.comment.trim() : "";
+  const department =
+    typeof body.department === "string" ? body.department.trim() : "";
 
   if (
     preferences.length !== 4 ||
@@ -182,10 +189,25 @@ export async function POST(request: Request) {
     faculty: string;
     department: string;
   };
-  const expectedAsset = getCandidateCvAsset({
+  if (
+    !isFaculty(candidate.faculty) ||
+    !isDepartmentForFaculty(candidate.faculty, department)
+  ) {
+    return NextResponse.json(
+      { error: "Select a valid department for your faculty" },
+      { status: 400 },
+    );
+  }
+
+  const previousAsset = getCandidateCvAsset({
     studentId: candidate.student_id,
     faculty: candidate.faculty,
     department: candidate.department,
+  });
+  const expectedAsset = getCandidateCvAsset({
+    studentId: candidate.student_id,
+    faculty: candidate.faculty,
+    department,
   });
 
   if (publicId !== expectedAsset.fullPublicId) {
@@ -218,8 +240,9 @@ export async function POST(request: Request) {
            pref_2 = $3,
            pref_3 = $4,
            pref_4 = $5,
-           application_comment = $6
-       WHERE user_id = $7`,
+           application_comment = $6,
+           department = $7
+       WHERE user_id = $8`,
       [
         uploadedAsset.secure_url,
         preferences[0],
@@ -227,9 +250,21 @@ export async function POST(request: Request) {
         preferences[2],
         preferences[3],
         comment || null,
+        department,
         session.user.id,
       ],
     );
+
+    if (previousAsset.fullPublicId !== expectedAsset.fullPublicId) {
+      try {
+        await cloudinary.uploader.destroy(previousAsset.fullPublicId, {
+          resource_type: "raw",
+          invalidate: true,
+        });
+      } catch (cleanupError: unknown) {
+        console.error("Previous candidate CV cleanup error:", cleanupError);
+      }
+    }
 
     return NextResponse.json({
       success: true,

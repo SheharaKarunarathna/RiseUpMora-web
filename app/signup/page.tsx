@@ -13,10 +13,11 @@ import {
   Phone,
   UserRound,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   departmentsByFaculty,
   faculties,
+  normalizeStudentIdInput,
   type Faculty,
 } from "@/lib/candidate-options";
 import SiteBackground from "../site-background";
@@ -28,9 +29,83 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [selectedFaculty, setSelectedFaculty] = useState<Faculty | "">("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [email, setEmail] = useState("");
   const [studentId, setStudentId] = useState("");
+  const [emailFieldError, setEmailFieldError] = useState("");
+  const [studentIdFieldError, setStudentIdFieldError] = useState("");
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [isCheckingStudentId, setIsCheckingStudentId] = useState(false);
 
   const departmentOptions = selectedFaculty ? departmentsByFaculty[selectedFaculty] : [];
+
+  useEffect(() => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/v1/candidate/check-availability", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: normalizedEmail }),
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as { emailExists?: boolean };
+        if (response.ok && data.emailExists) {
+          setEmailFieldError("This email address is already registered.");
+        }
+      } catch (requestError: unknown) {
+        if (!(requestError instanceof DOMException && requestError.name === "AbortError")) {
+          setEmailFieldError("");
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsCheckingEmail(false);
+      }
+    }, 600);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [email]);
+
+  useEffect(() => {
+    if (!/^\d{6}[A-Z]$/.test(studentId)) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/v1/candidate/check-availability", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId }),
+          signal: controller.signal,
+        });
+        const data = (await response.json()) as { studentIdExists?: boolean };
+        if (response.ok && data.studentIdExists) {
+          setStudentIdFieldError(
+            "This university ID is already registered. Contact an OC member if you have any doubt.",
+          );
+        }
+      } catch (requestError: unknown) {
+        if (!(requestError instanceof DOMException && requestError.name === "AbortError")) {
+          setStudentIdFieldError("");
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsCheckingStudentId(false);
+      }
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [studentId]);
 
   return (
     <div className="signup-page">
@@ -77,6 +152,17 @@ export default function SignupPage() {
               const form = event.currentTarget;
               setError("");
               setSubmitted(false);
+
+              if (
+                emailFieldError ||
+                studentIdFieldError ||
+                isCheckingEmail ||
+                isCheckingStudentId
+              ) {
+                setError("Resolve the highlighted fields before signing up.");
+                return;
+              }
+
               setIsSubmitting(true);
 
               const formData = new FormData(form);
@@ -90,10 +176,20 @@ export default function SignupPage() {
                 const data = (await response.json()) as {
                   success?: boolean;
                   error?: string;
+                  field?: "email" | "studentId";
                 };
 
                 if (!response.ok || !data.success) {
-                  setError(data.error || "Unable to complete registration");
+                  if (data.field === "email") {
+                    setEmailFieldError(data.error || "This email address is already registered.");
+                  } else if (data.field === "studentId") {
+                    setStudentIdFieldError(
+                      data.error ||
+                        "This university ID is already registered. Contact an OC member if you have any doubt.",
+                    );
+                  } else {
+                    setError(data.error || "Unable to complete registration");
+                  }
                   return;
                 }
 
@@ -101,7 +197,10 @@ export default function SignupPage() {
                 form.reset();
                 setSelectedFaculty("");
                 setSelectedDepartment("");
+                setEmail("");
                 setStudentId("");
+                setIsCheckingEmail(false);
+                setIsCheckingStudentId(false);
               } catch {
                 setError("Unable to connect. Please check your connection and try again.");
               } finally {
@@ -138,10 +237,32 @@ export default function SignupPage() {
 
             <label>
               <span>Email address</span>
-              <div className="signup-field">
+              <div className={`signup-field${emailFieldError ? " signup-field--error" : ""}`}>
                 <Mail size={18} aria-hidden="true" />
-                <input name="email" type="email" autoComplete="email" required />
+                <input
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setEmail(value);
+                    setEmailFieldError("");
+                    setIsCheckingEmail(
+                      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()),
+                    );
+                  }}
+                  aria-invalid={Boolean(emailFieldError)}
+                  aria-describedby={emailFieldError ? "signup-email-error" : undefined}
+                  required
+                />
               </div>
+              {isCheckingEmail && <small className="signup-field-status">Checking email...</small>}
+              {emailFieldError && (
+                <small className="signup-field-error" id="signup-email-error" role="alert">
+                  {emailFieldError}
+                </small>
+              )}
             </label>
 
             <label>
@@ -186,7 +307,7 @@ export default function SignupPage() {
 
               <label>
                 <span>Student ID</span>
-                <div className="signup-field">
+                <div className={`signup-field${studentIdFieldError ? " signup-field--error" : ""}`}>
                   <input
                     name="studentId"
                     type="text"
@@ -194,15 +315,33 @@ export default function SignupPage() {
                     pattern="[0-9]{6}[A-Za-z]"
                     title="Enter 6 digits followed by one English letter"
                     value={studentId}
+                    aria-invalid={Boolean(studentIdFieldError)}
+                    aria-describedby={
+                      studentIdFieldError ? "signup-student-id-error" : undefined
+                    }
                     onChange={(event) => {
-                      const value = event.target.value;
-                      setStudentId(
-                        value.replace(/[a-z]$/i, (letter) => letter.toUpperCase()),
+                      const normalizedValue = normalizeStudentIdInput(
+                        event.target.value,
                       );
+                      setStudentId(normalizedValue);
+                      setStudentIdFieldError("");
+                      setIsCheckingStudentId(/^\d{6}[A-Z]$/.test(normalizedValue));
                     }}
                     required
                   />
                 </div>
+                {isCheckingStudentId && (
+                  <small className="signup-field-status">Checking university ID...</small>
+                )}
+                {studentIdFieldError && (
+                  <small
+                    className="signup-field-error"
+                    id="signup-student-id-error"
+                    role="alert"
+                  >
+                    {studentIdFieldError}
+                  </small>
+                )}
               </label>
             </div>
 
@@ -229,7 +368,17 @@ export default function SignupPage() {
               </div>
             </label>
 
-            <button className="signup-submit" type="submit" disabled={isSubmitting}>
+            <button
+              className="signup-submit"
+              type="submit"
+              disabled={
+                isSubmitting ||
+                isCheckingEmail ||
+                isCheckingStudentId ||
+                Boolean(emailFieldError) ||
+                Boolean(studentIdFieldError)
+              }
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="signup-spinner" size={18} aria-hidden="true" />

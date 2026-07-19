@@ -11,6 +11,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { departmentsByFaculty, isFaculty } from "@/lib/candidate-options";
 import SiteBackground from "../../site-background";
 import SiteHeader from "../../site-header";
 
@@ -58,6 +59,7 @@ export default function CandidateApplicationPage() {
   const [candidate, setCandidate] = useState<CandidateApplication | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [preferences, setPreferences] = useState(["", "", "", ""]);
+  const [selectedDepartment, setSelectedDepartment] = useState("");
   const [comment, setComment] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -95,6 +97,7 @@ export default function CandidateApplicationPage() {
         if (!data) return;
         setCandidate(data.candidate);
         setCompanies(data.companies);
+        setSelectedDepartment(data.candidate.department);
         setPreferences(
           Array.from({ length: 4 }, (_, index) =>
             data.candidate.preferences[index] ?? "",
@@ -161,11 +164,21 @@ export default function CandidateApplicationPage() {
   };
 
   const updatePreference = (index: number, value: string) => {
-    setPreferences((current) =>
-      current.map((preference, preferenceIndex) =>
-        preferenceIndex === index ? value : preference,
-      ),
-    );
+    setPreferences((current) => {
+      const next = [...current];
+      const previousValue = next[index];
+      const existingIndex = next.findIndex(
+        (preference, preferenceIndex) =>
+          preferenceIndex !== index && preference === value,
+      );
+
+      next[index] = value;
+      if (existingIndex !== -1) {
+        next[existingIndex] = previousValue;
+      }
+
+      return next;
+    });
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -192,7 +205,11 @@ export default function CandidateApplicationPage() {
     try {
       const signatureResponse = await fetch(
         "/api/v1/candidate/application/upload-signature",
-        { method: "POST" },
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ department: selectedDepartment }),
+        },
       );
       const signatureData = (await signatureResponse.json()) as
         | UploadSignature
@@ -237,6 +254,7 @@ export default function CandidateApplicationPage() {
           publicId: uploadData.public_id,
           preferences,
           comment,
+          department: selectedDepartment,
         }),
       });
       const data = (await response.json()) as {
@@ -304,13 +322,31 @@ export default function CandidateApplicationPage() {
                   ["Phone number", candidate.phone],
                   ["University ID", candidate.studentId],
                   ["Faculty", candidate.faculty],
-                  ["Department", candidate.department],
                 ].map(([label, value]) => (
                   <label key={label}>
                     <span>{label}</span>
                     <input type="text" value={value} readOnly />
                   </label>
                 ))}
+                <label>
+                  <span>Department</span>
+                  <select
+                    value={selectedDepartment}
+                    onChange={(event) => setSelectedDepartment(event.target.value)}
+                    disabled={isSubmitting}
+                    required
+                  >
+                    {isFaculty(candidate.faculty) ? (
+                      departmentsByFaculty[candidate.faculty].map((department) => (
+                        <option value={department} key={department}>
+                          {department}
+                        </option>
+                      ))
+                    ) : (
+                      <option value={candidate.department}>{candidate.department}</option>
+                    )}
+                  </select>
+                </label>
               </div>
             </section>
 
@@ -320,6 +356,9 @@ export default function CandidateApplicationPage() {
                 <div>
                   <h2 id="cv-upload-title">Curriculum vitae</h2>
                   <p>File types accepted: PDF, maximum file size: 10 MB</p>
+                  <p className="application-upload-note">
+                    <strong>NOTE:</strong> Re-uploading your CV may replace the previous one.
+                  </p>
                 </div>
               </div>
 
@@ -389,10 +428,6 @@ export default function CandidateApplicationPage() {
                         <option
                           value={company.id}
                           key={company.id}
-                          disabled={preferences.some(
-                            (selected, selectedIndex) =>
-                              selectedIndex !== index && selected === company.id,
-                          )}
                         >
                           {company.name}
                         </option>
