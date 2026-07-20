@@ -4,56 +4,53 @@ import { useEffect, useRef, useState } from "react";
 
 const events = [
   {
-    day: "14",
+    day: "21",
     month: "July",
     year: "2026",
-    type: "Workshop",
-    title: "LinkedIn Profile Creation and Maintenance Workshop",
+    type: "Session",
+    title: "Awareness Session",
   },
   {
-    day: "17",
+    day: "21",
     month: "July",
     year: "2026",
     type: "Registration",
-    title:
-      "Registrations open for the Internship and Mock Interview Fair for University of Moratuwa undergraduates",
+    title: "Registration",
   },
   {
-    day: "22",
+    day: "25",
     month: "July",
     year: "2026",
     type: "Workshop",
-    title: "Excelling in CV Writing Workshop",
+    title: "LinkedIn Profile Creation & Maintenance",
   },
   {
-    day: "28",
+    day: "30",
     month: "July",
     year: "2026",
     type: "Workshop",
-    title: "Mastering the Art of Acing Interview Workshop",
+    title: "Excelling in CV Writing",
   },
   {
-    day: "29",
-    month: "July",
+    day: "04",
+    month: "August",
     year: "2026",
-    type: "Registration",
-    title:
-      "Registrations close for the Internship and Mock Interview Fair for University of Moratuwa undergraduates",
+    type: "Workshop",
+    title: "Mastering the Art of Acing Interviews",
   },
   {
     day: "06",
     month: "August",
     year: "2026",
-    type: "Flagship event",
-    title: "Internship and Mock Interview Fair",
+    type: "Session",
+    title: "Mock Interview Session",
   },
   {
     day: "",
     month: "August",
     year: "2026",
-    type: "Industry exposure",
-    title:
-      "Company Awareness and Industry Exposure Sessions with leading companies in the industry",
+    type: "Other event",
+    title: "Internship and Mock Interview Fair",
   },
 ] as const;
 

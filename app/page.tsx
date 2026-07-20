@@ -113,16 +113,32 @@ const footerQuickLinks = [
 
 const footerEvents = [
   {
-    title: "Registrations Opening",
-    date: "July 17th, 2026",
+    title: "Awareness Session",
+    date: "July 21st, 2026",
   },
   {
-    title: "Registrations Closing",
-    date: "July 29th, 2026",
+    title: "Registration",
+    date: "July 21st, 2026",
+  },
+  {
+    title: "LinkedIn Profile Creation & Maintenance",
+    date: "July 25th, 2026",
+  },
+  {
+    title: "Excelling in CV Writing",
+    date: "July 30th, 2026",
+  },
+  {
+    title: "Mastering the Art of Acing Interviews",
+    date: "August 4th, 2026",
+  },
+  {
+    title: "Mock Interview Session",
+    date: "August 6th, 2026",
   },
   {
     title: "Internship & Mock Interview Fair",
-    date: "August 6th, 2026",
+    date: "Date to be decided",
   },
 ] as const;
 
