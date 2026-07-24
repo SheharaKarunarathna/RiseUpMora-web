@@ -344,7 +344,11 @@ export default function Home() {
       <footer className="site-footer" id="contact">
         <div className="site-footer__inner">
           <section className="site-footer__brand" aria-label="IEEE Student Branch UoM">
-            <h2>IEEE Student Branch UoM</h2>
+            <div className="site-footer__brand-titles">
+              <h2 className="text-left">IEEE Student Branch</h2>
+              <span className="site-footer__brand-divider">·</span>
+              <h2 className="text-left">University of Moratuwa</h2>
+            </div>
             <Image
               className="site-footer__logo"
               src={ieeeSbWhiteLogo}
@@ -397,11 +401,6 @@ export default function Home() {
 
         <div className="site-footer__bottom">
           <p>© 2026 IEEE Student Branch, University of Moratuwa. All rights reserved.</p>
-          <div>
-            <a href="#home">Privacy Policy</a>
-            <a href="#home">Terms of Service</a>
-            <a href="#home">Sitemap</a>
-          </div>
         </div>
       </footer>
     </div>

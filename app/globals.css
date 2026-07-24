@@ -1996,12 +1996,27 @@ html {
 }
 
 .site-footer__brand h2 {
-  max-width: 14ch;
+  max-width: none;
   color: #ffffff;
   font-size: clamp(2rem, 4vw, 3.2rem);
   font-weight: 800;
   letter-spacing: -0.055em;
   line-height: 1;
+}
+
+.site-footer__brand-titles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4em;
+}
+
+.site-footer__brand-divider {
+  color: rgb(255 255 255 / 40%);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .site-footer__logo {
@@ -3904,7 +3919,7 @@ html {
   }
 
   .site-footer__brand h2 {
-    max-width: 11ch;
+    max-width: none;
   }
 }
 
