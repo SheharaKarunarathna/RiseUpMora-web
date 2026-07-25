@@ -130,3 +130,59 @@ export const sendCandidateVerificationEmail = async (
     html,
   });
 };
+
+export const sendCvNoticeEmail = async (to: string, name?: string) => {
+  const safeName = name
+    ? name
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;")
+    : "Candidate";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Rise Up Mora - CV Submission Notice</title>
+      <style>
+        body { font-family: Arial, sans-serif; background-color: #f8fcfe; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,36,84,0.05); border: 1px solid rgba(0,36,84,0.1); }
+        .header { background-color: #002454; padding: 32px 24px; text-align: center; }
+        .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; }
+        .header h1 span { color: #f6c430; }
+        .content { padding: 40px 32px; color: #333333; }
+        .content h2 { color: #002454; margin-top: 0; font-size: 20px; }
+        .content p { line-height: 1.6; margin-bottom: 20px; color: #4a5568; }
+        .notice-box { background-color: #fefce8; border-left: 4px solid #f6c430; padding: 16px 20px; border-radius: 4px; margin-bottom: 24px; }
+        .notice-box p { margin: 0; color: #744210; font-weight: 600; }
+        .footer { background-color: #f8fcfe; padding: 24px; text-align: center; font-size: 13px; color: #718096; border-top: 1px solid rgba(0,36,84,0.05); }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header"><h1>Rise Up <span>Mora</span></h1></div>
+        <div class="content">
+          <h2>CV Submissions Opening Soon</h2>
+          <p>Hello ${safeName},</p>
+          <div class="notice-box">
+            <p>The CV submission period will open by the end of July. Once submissions begin, you will be notified via email and through our website.</p>
+          </div>
+          <p>Please remember to check your spam or junk folder and mark our email address as 'not spam' to ensure you receive our updates. Alternatively, you may check our website regularly.</p>
+        </div>
+        <div class="footer">&copy; ${new Date().getFullYear()} Rise Up Mora. All rights reserved.</div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await transporter.sendMail({
+    from: `"Rise Up Mora" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: "CV Submissions Opening Soon - Rise Up Mora",
+    html,
+  });
+};
+

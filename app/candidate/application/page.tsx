@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  AlertCircle,
   ArrowLeft,
   CheckCircle2,
   FileText,
+  Info,
   Loader2,
   UploadCloud,
+  X,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -67,6 +70,46 @@ export default function CandidateApplicationPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [interviews, setInterviews] = useState<any[]>([]);
+
+  const [showNoticePopup, setShowNoticePopup] = useState(true);
+  const [isSendingNoticeEmail, setIsSendingNoticeEmail] = useState(false);
+  const [noticeEmailStatus, setNoticeEmailStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const handleSendNoticeEmail = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isSendingNoticeEmail) return;
+    setIsSendingNoticeEmail(true);
+    setNoticeEmailStatus(null);
+
+    try {
+      const response = await fetch("/api/v1/candidate/send-cv-notice", {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setNoticeEmailStatus({
+          type: "success",
+          message: data.message || "Email sent successfully! Check your inbox.",
+        });
+      } else {
+        setNoticeEmailStatus({
+          type: "error",
+          message: data.error || "Unable to send notice email. Please try again.",
+        });
+      }
+    } catch {
+      setNoticeEmailStatus({
+        type: "error",
+        message: "Connection error. Please try again.",
+      });
+    } finally {
+      setIsSendingNoticeEmail(false);
+    }
+  };
+
 
   useEffect(() => {
     if (status === "loading") return;
@@ -309,7 +352,7 @@ export default function CandidateApplicationPage() {
                           {item.status === "0" ? "Pending" : item.status === "1" ? "Scheduled" : item.status === "ONGOING" ? "Ongoing" : "Completed"}
                         </span>
                       </div>
-                      
+
                       {item.status === "ONGOING" && (
                         <div className="candidate-interview-ongoing-notice">
                           <span>🔔</span> Your mock interview session is currently active. Please report to your assigned panel list.
@@ -333,7 +376,7 @@ export default function CandidateApplicationPage() {
                               <span className="rating-value">{item.industry_ready || "N/A"}/10</span>
                             </div>
                           </div>
-                          
+
                           {item.written_feedback && (
                             <div className="candidate-feedback-notes">
                               <h5>Panelist Advice & Notes</h5>
@@ -349,161 +392,232 @@ export default function CandidateApplicationPage() {
             )}
 
             <form className="candidate-application-form" onSubmit={handleSubmit}>
-            <section className="application-section" aria-labelledby="applicant-details-title">
-              <div className="application-section__heading">
-                <span>01</span>
-                <div>
-                  <h2 id="applicant-details-title">Applicant details</h2>
-                  <p>These details come from your verified candidate profile.</p>
+              <section className="application-section" aria-labelledby="applicant-details-title">
+                <div className="application-section__heading">
+                  <span>01</span>
+                  <div>
+                    <h2 id="applicant-details-title">Applicant details</h2>
+                    <p>These details come from your verified candidate profile.</p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="application-details-grid">
-                {[
-                  ["Name", candidate.name],
-                  ["Email address", candidate.email],
-                  ["Phone number", candidate.phone],
-                  ["University ID", candidate.studentId],
-                  ["Faculty", candidate.faculty],
-                  ["Department", candidate.department],
-                ].map(([label, value]) => (
-                  <label key={label}>
-                    <span>{label}</span>
-                    <input type="text" value={value} readOnly />
-                  </label>
-                ))}
-              </div>
-            </section>
-
-            <section className="application-section" aria-labelledby="cv-upload-title">
-              <div className="application-section__heading">
-                <span>02</span>
-                <div>
-                  <h2 id="cv-upload-title">Curriculum vitae</h2>
-                  <p>File types accepted: PDF, maximum file size: 10 MB</p>
+                <div className="application-details-grid">
+                  {[
+                    ["Name", candidate.name],
+                    ["Email address", candidate.email],
+                    ["Phone number", candidate.phone],
+                    ["University ID", candidate.studentId],
+                    ["Faculty", candidate.faculty],
+                    ["Department", candidate.department],
+                  ].map(([label, value]) => (
+                    <label key={label}>
+                      <span>{label}</span>
+                      <input type="text" value={value} readOnly />
+                    </label>
+                  ))}
                 </div>
-              </div>
+              </section>
 
-              <div
-                className={`application-dropzone${isDragging ? " application-dropzone--active" : ""}`}
-                onDragEnter={(event) => {
-                  event.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragOver={(event) => event.preventDefault()}
-                onDragLeave={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+              <section className="application-section" aria-labelledby="cv-upload-title">
+                <div className="application-section__heading">
+                  <span>02</span>
+                  <div>
+                    <h2 id="cv-upload-title">Curriculum vitae</h2>
+                    <p>File types accepted: PDF, maximum file size: 10 MB</p>
+                  </div>
+                </div>
+
+                <div
+                  className={`application-dropzone${isDragging ? " application-dropzone--active" : ""}`}
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                      setIsDragging(false);
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
                     setIsDragging(false);
-                  }
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  setIsDragging(false);
-                  selectFile(event.dataTransfer.files[0]);
-                }}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  onChange={(event) => selectFile(event.target.files?.[0])}
-                  disabled={isSubmitting}
-                />
-                {file ? <FileText size={34} aria-hidden="true" /> : <UploadCloud size={34} aria-hidden="true" />}
-                <strong>{file ? file.name : "Drag and drop your CV here"}</strong>
-                <span>
-                  {file
-                    ? `${(file.size / 1024 / 1024).toFixed(2)} MB - PDF verified`
-                    : "or click to browse files"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isSubmitting}
+                    selectFile(event.dataTransfer.files[0]);
+                  }}
                 >
-                  Browse files
-                </button>
-              </div>
-            </section>
-
-            <section className="application-section" aria-labelledby="preferences-title">
-              <div className="application-section__heading">
-                <span>03</span>
-                <div>
-                  <h2 id="preferences-title">Company preferences</h2>
-                  <p>Rank four different companies in your preferred order.</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={(event) => selectFile(event.target.files?.[0])}
+                    disabled={isSubmitting}
+                  />
+                  {file ? <FileText size={34} aria-hidden="true" /> : <UploadCloud size={34} aria-hidden="true" />}
+                  <strong>{file ? file.name : "Drag and drop your CV here"}</strong>
+                  <span>
+                    {file
+                      ? `${(file.size / 1024 / 1024).toFixed(2)} MB - PDF verified`
+                      : "or click to browse files"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isSubmitting}
+                  >
+                    Browse files
+                  </button>
                 </div>
-              </div>
+              </section>
 
-              <div className="application-preferences-grid">
-                {preferences.map((preference, index) => (
-                  <label key={index}>
-                    <span>Preference {index + 1}</span>
-                    <select
-                      value={preference}
-                      onChange={(event) => updatePreference(index, event.target.value)}
-                      disabled={isSubmitting}
-                      required
-                    >
-                      <option value="" disabled>Select company</option>
-                      {companies.map((company) => (
-                        <option
-                          value={company.id}
-                          key={company.id}
-                          disabled={preferences.some(
-                            (selected, selectedIndex) =>
-                              selectedIndex !== index && selected === company.id,
-                          )}
-                        >
-                          {company.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
-            </section>
-
-            <section className="application-section" aria-labelledby="comment-title">
-              <div className="application-section__heading">
-                <span>04</span>
-                <div>
-                  <h2 id="comment-title">Comment</h2>
-                  <p>Optional</p>
+              <section className="application-section" aria-labelledby="preferences-title">
+                <div className="application-section__heading">
+                  <span>03</span>
+                  <div>
+                    <h2 id="preferences-title">Company preferences</h2>
+                    <p>Rank four different companies in your preferred order.</p>
+                  </div>
                 </div>
-              </div>
 
-              <label className="application-comment">
-                <span>Additional comment</span>
-                <textarea
-                  value={comment}
-                  onChange={(event) => setComment(event.target.value)}
-                  maxLength={2000}
-                  rows={5}
-                  disabled={isSubmitting}
-                />
-                <small>{comment.length} / 2000</small>
-              </label>
-            </section>
+                <div className="application-preferences-grid">
+                  {preferences.map((preference, index) => (
+                    <label key={index}>
+                      <span>Preference {index + 1}</span>
+                      <select
+                        value={preference}
+                        onChange={(event) => updatePreference(index, event.target.value)}
+                        disabled={isSubmitting}
+                        required
+                      >
+                        <option value="" disabled>Select company</option>
+                        {companies.map((company) => (
+                          <option
+                            value={company.id}
+                            key={company.id}
+                            disabled={preferences.some(
+                              (selected, selectedIndex) =>
+                                selectedIndex !== index && selected === company.id,
+                            )}
+                          >
+                            {company.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+              </section>
 
-            {error && <div className="signup-error" role="alert">{error}</div>}
+              <section className="application-section" aria-labelledby="comment-title">
+                <div className="application-section__heading">
+                  <span>04</span>
+                  <div>
+                    <h2 id="comment-title">Comment</h2>
+                    <p>Optional</p>
+                  </div>
+                </div>
 
-            <button
-              className="application-submit"
-              type="submit"
-              disabled={isSubmitting || companies.length < 4}
-            >
-              {isSubmitting ? (
-                <Loader2 className="signup-spinner" size={19} aria-hidden="true" />
-              ) : null}
-              {isSubmitting ? submissionStage : "Submit application"}
-            </button>
+                <label className="application-comment">
+                  <span>Additional comment</span>
+                  <textarea
+                    value={comment}
+                    onChange={(event) => setComment(event.target.value)}
+                    maxLength={2000}
+                    rows={5}
+                    disabled={isSubmitting}
+                  />
+                  <small>{comment.length} / 2000</small>
+                </label>
+              </section>
+
+              {error && <div className="signup-error" role="alert">{error}</div>}
+
+              <button
+                className="application-submit"
+                type="submit"
+                disabled={isSubmitting || companies.length < 4}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="signup-spinner" size={19} aria-hidden="true" />
+                ) : null}
+                {isSubmitting ? submissionStage : "Submit application"}
+              </button>
             </form>
           </>
         ) : (
           <div className="signup-error" role="alert">{error}</div>
         )}
       </main>
+
+      {showNoticePopup && (
+        <div
+          className="cv-notice-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowNoticePopup(false);
+          }}
+        >
+          <section
+            className="cv-notice-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cv-notice-title"
+          >
+            <button
+              type="button"
+              className="cv-notice-close-btn"
+              onClick={() => setShowNoticePopup(false)}
+              aria-label="Close notice"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="cv-notice-modal__content">
+              <div className="cv-notice-modal__icon" aria-hidden="true">
+                <Info size={30} />
+              </div>
+              <h2 id="cv-notice-title">CV Submissions Opening Soon!</h2>
+              <div className="cv-notice-text">
+                <p>
+                  The CV submission period will open by the end of July. Once submissions begin, you will be notified via email and through our website. Please remember to check your spam or junk folder and mark our email address as &apos;not spam&apos; to ensure you receive our updates. Alternatively, you may check our website regularly.
+                </p>
+                <p style={{ marginTop: "0.75rem" }}>
+                  Click{" "}
+                  <button
+                    type="button"
+                    onClick={handleSendNoticeEmail}
+                    disabled={isSendingNoticeEmail}
+                    className="cv-notice-trigger-btn"
+                  >
+                    {isSendingNoticeEmail ? "sending email..." : "here"}
+                  </button>{" "}
+                  to check your inbox.
+                </p>
+              </div>
+
+              {noticeEmailStatus && (
+                <div
+                  className={`cv-notice-status cv-notice-status--${noticeEmailStatus.type}`}
+                  role="status"
+                >
+                  {noticeEmailStatus.type === "success" ? (
+                    <CheckCircle2 size={16} />
+                  ) : (
+                    <AlertCircle size={16} />
+                  )}
+                  <span>{noticeEmailStatus.message}</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="cv-notice-dismiss-btn"
+                onClick={() => setShowNoticePopup(false)}
+              >
+                Understood
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {success && (
         <div
