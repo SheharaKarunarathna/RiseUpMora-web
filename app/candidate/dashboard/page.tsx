@@ -578,7 +578,7 @@ export default function CandidateDashboardPage() {
                   </div>
                   <div className="dashboard-cv-actions">
                     <a
-                      href={candidate.cvUrl}
+                      href="/api/v1/candidate/cv/me"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="dashboard-cv-btn dashboard-cv-btn--view"

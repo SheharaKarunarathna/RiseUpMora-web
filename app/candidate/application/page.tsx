@@ -4,6 +4,7 @@ import {
   AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  ExternalLink,
   FileText,
   Info,
   Loader2,
@@ -453,20 +454,64 @@ export default function CandidateApplicationPage() {
                     onChange={(event) => selectFile(event.target.files?.[0])}
                     disabled={isSubmitting}
                   />
-                  {file ? <FileText size={34} aria-hidden="true" /> : <UploadCloud size={34} aria-hidden="true" />}
-                  <strong>{file ? file.name : "Drag and drop your CV here"}</strong>
-                  <span>
-                    {file
-                      ? `${(file.size / 1024 / 1024).toFixed(2)} MB - PDF verified`
-                      : "or click to browse files"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isSubmitting}
-                  >
-                    Browse files
-                  </button>
+                  {file ? (
+                    <>
+                      <FileText size={34} className="text-[#1688b2]" aria-hidden="true" />
+                      <strong>{file.name}</strong>
+                      <span className="text-emerald-700 font-semibold">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB - PDF verified (new file selected)
+                      </span>
+                      <div className="flex items-center gap-3 mt-2 relative z-10" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isSubmitting}
+                          className="px-3.5 py-1.5 text-xs font-bold rounded-xl border border-[#002454]/20 hover:bg-slate-100 text-[#002454] bg-white transition-colors shadow-sm"
+                        >
+                          Change File
+                        </button>
+                      </div>
+                    </>
+                  ) : candidate?.cvUrl ? (
+                    <>
+                      <FileText size={34} className="text-[#1688b2]" aria-hidden="true" />
+                      <strong>CV Currently Uploaded</strong>
+                      <span className="text-slate-600 font-medium">
+                        Your CV is active. Drag & drop a new PDF to update it, or view your current CV below.
+                      </span>
+                      <div className="cv-dropzone-actions" onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href="/api/v1/candidate/cv/me"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="cv-dropzone-btn cv-dropzone-btn--primary"
+                        >
+                          <ExternalLink size={14} /> View Uploaded CV
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isSubmitting}
+                          className="cv-dropzone-btn cv-dropzone-btn--secondary"
+                        >
+                          Replace CV
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud size={34} aria-hidden="true" />
+                      <strong>Drag and drop your CV here</strong>
+                      <span>or click to browse files</span>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isSubmitting}
+                      >
+                        Browse files
+                      </button>
+                    </>
+                  )}
                 </div>
               </section>
 

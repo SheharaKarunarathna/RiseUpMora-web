@@ -218,20 +218,44 @@ export async function POST(request: Request) {
   }
 
   try {
-    const uploadedAsset = await cloudinary.api.resource(expectedAsset.fullPublicId, {
-      resource_type: "raw",
-    });
+    let uploadedAsset: any;
+    try {
+      uploadedAsset = await cloudinary.api.resource(expectedAsset.fullPublicId, {
+        resource_type: "raw",
+        type: "authenticated",
+      });
+    } catch {
+      try {
+        uploadedAsset = await cloudinary.api.resource(expectedAsset.fullPublicId, {
+          resource_type: "raw",
+          type: "upload",
+        });
+      } catch (resourceErr) {
+        console.error("Cloudinary resource fetch error:", resourceErr);
+        return NextResponse.json(
+          { error: "The uploaded CV could not be found on Cloudinary. Please re-upload your PDF." },
+          { status: 400 },
+        );
+      }
+    }
 
     if (
-      uploadedAsset.secure_url !== cvUrl ||
+      !uploadedAsset ||
       uploadedAsset.bytes > maximumFileSize ||
-      !uploadedAsset.public_id.endsWith(".pdf")
+      !uploadedAsset.public_id.toLowerCase().endsWith(".pdf")
     ) {
+      console.error("Cloudinary asset verification failed:", {
+        bytes: uploadedAsset?.bytes,
+        public_id: uploadedAsset?.public_id,
+        expected: expectedAsset.fullPublicId,
+      });
       return NextResponse.json(
         { error: "Cloudinary could not verify the uploaded PDF" },
         { status: 400 },
       );
     }
+
+    const savedCvUrl = uploadedAsset.secure_url || cvUrl;
 
     await query(
       `UPDATE candidates
@@ -243,7 +267,7 @@ export async function POST(request: Request) {
            application_comment = $6
        WHERE user_id = $7`,
       [
-        uploadedAsset.secure_url,
+        savedCvUrl,
         preferences[0],
         preferences[1],
         preferences[2],

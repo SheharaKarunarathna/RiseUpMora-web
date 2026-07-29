@@ -111,26 +111,34 @@ export async function GET(
     let pdfResponse: Response | null = null;
 
     if (process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-      const parts = candidate.cv_url.split("/upload/");
-      if (parts.length === 2) {
-        const publicIdWithFormat = parts[1].replace(/^v\d+\//, "");
+      let publicIdWithFormat = "";
+      const match = candidate.cv_url.match(/\/(?:upload|authenticated)(?:\/s--[^/]+--)?(?:\/v\d+)?\/(.+)$/);
+      if (match && match[1]) {
+        publicIdWithFormat = match[1];
+      } else {
+        const parts = candidate.cv_url.split(/\/(?:upload|authenticated)\//);
+        if (parts.length === 2) {
+          publicIdWithFormat = parts[1].replace(/^(?:s--[^/]+--\/)?(?:v\d+\/)?/, "");
+        }
+      }
 
-        // Try signed download URL for upload type
-        const uploadSignedUrl = cloudinary.utils.private_download_url(
+      if (publicIdWithFormat) {
+        // Try signed download URL for authenticated type first
+        const authSignedUrl = cloudinary.utils.private_download_url(
           publicIdWithFormat,
           "",
-          { resource_type: "raw", type: "upload" }
+          { resource_type: "raw", type: "authenticated" }
         );
-        pdfResponse = await fetch(uploadSignedUrl);
+        pdfResponse = await fetch(authSignedUrl);
 
-        // Fallback: try signed download URL for authenticated type
+        // Fallback: try signed download URL for upload type
         if (!pdfResponse.ok) {
-          const authSignedUrl = cloudinary.utils.private_download_url(
+          const uploadSignedUrl = cloudinary.utils.private_download_url(
             publicIdWithFormat,
             "",
-            { resource_type: "raw", type: "authenticated" }
+            { resource_type: "raw", type: "upload" }
           );
-          pdfResponse = await fetch(authSignedUrl);
+          pdfResponse = await fetch(uploadSignedUrl);
         }
       }
     }
@@ -141,6 +149,11 @@ export async function GET(
     }
 
     if (!pdfResponse.ok) {
+      console.error("CV Proxy failed to fetch PDF from Cloudinary:", {
+        status: pdfResponse.status,
+        statusText: pdfResponse.statusText,
+        cv_url: candidate.cv_url,
+      });
       return NextResponse.json(
         { error: "Unable to retrieve CV file from storage" },
         { status: 502 }
