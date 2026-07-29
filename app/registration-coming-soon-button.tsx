@@ -46,7 +46,7 @@ export default function RegistrationComingSoonButton({
           role="status"
           aria-live="polite"
         >
-          Registrations are opening soon.
+          Company selection will be available soon.
         </div>
       ) : null}
     </>

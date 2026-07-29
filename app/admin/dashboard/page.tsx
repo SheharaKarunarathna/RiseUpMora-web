@@ -16,6 +16,7 @@ export default async function AdminDashboardOverview() {
   let metrics = {
     totalUsers: 0,
     candidates: 0,
+    cvsUploaded: 0,
     companyCoordinators: 0,
     deptCoordinators: 0,
     panelists: 0,
@@ -24,10 +25,11 @@ export default async function AdminDashboardOverview() {
   };
 
   try {
-    const [rolesResult, companiesResult, allocationsResult] = await Promise.all([
+    const [rolesResult, companiesResult, allocationsResult, cvsResult] = await Promise.all([
       query("SELECT role, COUNT(*) as count FROM users GROUP BY role"),
       query("SELECT COUNT(*) FROM companies"),
-      query("SELECT COUNT(*) FROM allocations")
+      query("SELECT COUNT(*) FROM allocations"),
+      query("SELECT COUNT(*) as count FROM candidates WHERE cv_url IS NOT NULL AND cv_url != ''")
     ]);
 
     let totalUsers = 0;
@@ -41,6 +43,7 @@ export default async function AdminDashboardOverview() {
     });
 
     metrics.totalUsers = totalUsers;
+    metrics.cvsUploaded = parseInt(cvsResult.rows[0].count);
     metrics.companies = parseInt(companiesResult.rows[0].count);
     metrics.interviewsScheduled = parseInt(allocationsResult.rows[0].count);
   } catch (error) {

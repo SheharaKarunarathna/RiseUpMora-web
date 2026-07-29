@@ -124,22 +124,31 @@ export async function POST(request: Request) {
 
   const cvUrl = typeof body.cvUrl === "string" ? body.cvUrl.trim() : "";
   const publicId = typeof body.publicId === "string" ? body.publicId.trim() : "";
-  const preferences = Array.isArray(body.preferences)
+  const rawPreferences = Array.isArray(body.preferences)
     ? body.preferences.map((value) => (typeof value === "string" ? value.trim() : ""))
     : [];
   const comment = typeof body.comment === "string" ? body.comment.trim() : "";
 
-  if (
-    preferences.length !== 4 ||
-    preferences.some((preference) => !uuidPattern.test(preference))
-  ) {
-    return NextResponse.json(
-      { error: "Select all four company preferences" },
-      { status: 400 },
-    );
+  // Normalize preferences to array of 4 string | null elements
+  const preferences: Array<string | null> = Array.from({ length: 4 }, (_, index) => {
+    const pref = rawPreferences[index];
+    return pref && uuidPattern.test(pref) ? pref : null;
+  });
+
+  // Verify that any provided non-empty preferences are valid UUIDs
+  for (let i = 0; i < rawPreferences.length && i < 4; i++) {
+    const raw = rawPreferences[i];
+    if (raw && !uuidPattern.test(raw)) {
+      return NextResponse.json(
+        { error: "Invalid company preference" },
+        { status: 400 },
+      );
+    }
   }
 
-  if (new Set(preferences).size !== 4) {
+  const selectedPrefs = preferences.filter((p): p is string => p !== null);
+
+  if (new Set(selectedPrefs).size !== selectedPrefs.length) {
     return NextResponse.json(
       { error: "Each company preference must be different" },
       { status: 400 },
@@ -153,19 +162,21 @@ export async function POST(request: Request) {
     );
   }
 
-  const companyResult = await query(
-    "SELECT id FROM companies WHERE id = ANY($1::uuid[])",
-    [preferences],
-  );
-  if ((companyResult.rowCount ?? 0) !== 4) {
-    return NextResponse.json(
-      { error: "One or more selected companies are unavailable" },
-      { status: 400 },
+  if (selectedPrefs.length > 0) {
+    const companyResult = await query(
+      "SELECT id FROM companies WHERE id = ANY($1::uuid[])",
+      [selectedPrefs],
     );
+    if ((companyResult.rowCount ?? 0) !== selectedPrefs.length) {
+      return NextResponse.json(
+        { error: "One or more selected companies are unavailable" },
+        { status: 400 },
+      );
+    }
   }
 
   const candidateResult = await query(
-    `SELECT id, student_id, faculty, department
+    `SELECT id, student_id, faculty, department, cv_url
      FROM candidates
      WHERE user_id = $1`,
     [session.user.id],
@@ -177,51 +188,96 @@ export async function POST(request: Request) {
     );
   }
 
-  if (
-    !process.env.CLOUDINARY_CLOUD_NAME ||
-    !process.env.CLOUDINARY_API_KEY ||
-    !process.env.CLOUDINARY_API_SECRET
-  ) {
-    return NextResponse.json(
-      { error: "CV upload is not available until Cloudinary is configured" },
-      { status: 503 },
-    );
-  }
-
   const candidate = candidateResult.rows[0] as {
     student_id: string;
     faculty: string;
     department: string;
+    cv_url: string | null;
   };
-  const expectedAsset = getCandidateCvAsset({
-    studentId: candidate.student_id,
-    faculty: candidate.faculty,
-    department: candidate.department,
-  });
 
-  if (publicId !== expectedAsset.fullPublicId) {
+  let savedCvUrl = candidate.cv_url;
+
+  if (publicId) {
+    if (
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET
+    ) {
+      return NextResponse.json(
+        { error: "CV upload is not available until Cloudinary is configured" },
+        { status: 503 },
+      );
+    }
+
+    const expectedAsset = getCandidateCvAsset({
+      studentId: candidate.student_id,
+      faculty: candidate.faculty,
+      department: candidate.department,
+    });
+
+    if (publicId !== expectedAsset.fullPublicId) {
+      return NextResponse.json(
+        { error: "The uploaded CV path does not match your candidate profile" },
+        { status: 400 },
+      );
+    }
+
+    try {
+      let uploadedAsset: any;
+      try {
+        uploadedAsset = await cloudinary.api.resource(expectedAsset.fullPublicId, {
+          resource_type: "raw",
+          type: "authenticated",
+        });
+      } catch {
+        try {
+          uploadedAsset = await cloudinary.api.resource(expectedAsset.fullPublicId, {
+            resource_type: "raw",
+            type: "upload",
+          });
+        } catch (resourceErr) {
+          console.error("Cloudinary resource fetch error:", resourceErr);
+          return NextResponse.json(
+            { error: "The uploaded CV could not be found on Cloudinary. Please re-upload your PDF." },
+            { status: 400 },
+          );
+        }
+      }
+
+      if (
+        !uploadedAsset ||
+        uploadedAsset.bytes > maximumFileSize ||
+        !uploadedAsset.public_id.toLowerCase().endsWith(".pdf")
+      ) {
+        console.error("Cloudinary asset verification failed:", {
+          bytes: uploadedAsset?.bytes,
+          public_id: uploadedAsset?.public_id,
+          expected: expectedAsset.fullPublicId,
+        });
+        return NextResponse.json(
+          { error: "Cloudinary could not verify the uploaded PDF" },
+          { status: 400 },
+        );
+      }
+
+      savedCvUrl = uploadedAsset.secure_url || cvUrl || candidate.cv_url;
+    } catch (error: unknown) {
+      console.error("Candidate application submission error:", error);
+      return NextResponse.json(
+        { error: "Unable to verify your CV file. Please try again." },
+        { status: 500 },
+      );
+    }
+  }
+
+  if (!savedCvUrl) {
     return NextResponse.json(
-      { error: "The uploaded CV path does not match your candidate profile" },
+      { error: "Select your CV in PDF format before submitting." },
       { status: 400 },
     );
   }
 
   try {
-    const uploadedAsset = await cloudinary.api.resource(expectedAsset.fullPublicId, {
-      resource_type: "raw",
-    });
-
-    if (
-      uploadedAsset.secure_url !== cvUrl ||
-      uploadedAsset.bytes > maximumFileSize ||
-      !uploadedAsset.public_id.endsWith(".pdf")
-    ) {
-      return NextResponse.json(
-        { error: "Cloudinary could not verify the uploaded PDF" },
-        { status: 400 },
-      );
-    }
-
     await query(
       `UPDATE candidates
        SET cv_url = $1,
@@ -232,7 +288,7 @@ export async function POST(request: Request) {
            application_comment = $6
        WHERE user_id = $7`,
       [
-        uploadedAsset.secure_url,
+        savedCvUrl,
         preferences[0],
         preferences[1],
         preferences[2],
@@ -244,7 +300,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Your application has been submitted successfully",
+      message: "Your application has been updated successfully",
+      candidate: {
+        cvUrl: savedCvUrl,
+      },
     });
   } catch (error: unknown) {
     console.error("Candidate application submission error:", error);

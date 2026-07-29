@@ -309,11 +309,8 @@ export default function CandidateDashboardPage() {
       setError("Name cannot be empty.");
       return;
     }
-    if (preferences.some((preference) => !preference)) {
-      setError("Select all four company preferences.");
-      return;
-    }
-    if (new Set(preferences).size !== 4) {
+    const selectedPreferences = preferences.filter(Boolean);
+    if (new Set(selectedPreferences).size !== selectedPreferences.length) {
       setError("Each company preference must be different.");
       return;
     }
@@ -578,7 +575,7 @@ export default function CandidateDashboardPage() {
                   </div>
                   <div className="dashboard-cv-actions">
                     <a
-                      href={candidate.cvUrl}
+                      href="/api/v1/candidate/cv/me"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="dashboard-cv-btn dashboard-cv-btn--view"
@@ -630,9 +627,8 @@ export default function CandidateDashboardPage() {
                       value={preference}
                       onChange={(event) => updatePreference(index, event.target.value)}
                       disabled={isSaving}
-                      required
                     >
-                      <option value="" disabled>Select company</option>
+                      <option value="">Select company (optional)</option>
                       {companies.map((company) => (
                         <option
                           value={company.id}

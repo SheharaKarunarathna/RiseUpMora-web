@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Building2, BookOpen, UserRound, GraduationCap, CalendarCheck, Sparkles } from "lucide-react";
+import { Building2, BookOpen, UserRound, GraduationCap, CalendarCheck, FileText } from "lucide-react";
 
 interface Metrics {
   totalUsers: number;
   candidates: number;
+  cvsUploaded: number;
   companyCoordinators: number;
   deptCoordinators: number;
   panelists: number;
@@ -42,6 +43,7 @@ export default function DashboardClient({ metrics }: { metrics: Metrics }) {
   const companiesCount  = useCountUp(metrics.companies, 800, 200);
   const interviewsCount = useCountUp(metrics.interviewsScheduled, 800, 350);
   const candidatesCount = useCountUp(metrics.candidates, 900, 500);
+  const cvsCount        = useCountUp(metrics.cvsUploaded, 900, 550);
   const compCoorCount   = useCountUp(metrics.companyCoordinators, 800, 600);
   const deptCoorCount   = useCountUp(metrics.deptCoordinators, 800, 700);
   const panelistsCount  = useCountUp(metrics.panelists, 800, 800);
@@ -60,14 +62,9 @@ export default function DashboardClient({ metrics }: { metrics: Metrics }) {
       `}</style>
 
       {/* Header */}
-      <div className="flex items-center gap-3 animate-smooth" style={{ animationDelay: '0ms' }}>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f6c430] shadow-sm">
-          <Sparkles size={20} className="text-[#002454]" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-extrabold text-[#002454]">Platform Overview</h1>
-          <p className="text-sm text-[#002454]/55">Real-time metrics for Rise Up Mora</p>
-        </div>
+      <div className="animate-smooth" style={{ animationDelay: '0ms' }}>
+        <h1 className="text-2xl font-extrabold text-[#002454]">Platform Overview</h1>
+        <p className="text-sm text-[#002454]/55">Real-time metrics for Rise Up Mora</p>
       </div>
 
       {/* Event Activity */}
@@ -110,6 +107,10 @@ export default function DashboardClient({ metrics }: { metrics: Metrics }) {
             </div>
             <p className="text-sm font-bold text-[#002454]/60">Candidates</p>
             <p className="mt-1 text-4xl font-extrabold tabular-nums text-[#002454]">{candidatesCount}</p>
+            <div className="mt-3 flex items-center gap-1.5 rounded-xl bg-[#33aeda]/10 px-2.5 py-1 text-xs font-bold text-[#1688b2] w-fit">
+              <FileText size={13} />
+              <span>{cvsCount} CVs Uploaded</span>
+            </div>
           </div>
 
           <div className="group rounded-2xl bg-white border border-[#002454]/10 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md animate-smooth" style={{ animationDelay: '500ms' }}>

@@ -1,11 +1,15 @@
 "use client";
 
 import {
+  AlertCircle,
   ArrowLeft,
   CheckCircle2,
+  ExternalLink,
   FileText,
+  Info,
   Loader2,
   UploadCloud,
+  X,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -38,6 +42,8 @@ type UploadSignature = {
   folder: string;
   public_id: string;
   timestamp: number;
+  type?: string;
+  access_mode?: string;
   overwrite: boolean;
   invalidate: boolean;
   expectedPublicId: string;
@@ -67,6 +73,46 @@ export default function CandidateApplicationPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [interviews, setInterviews] = useState<any[]>([]);
+
+  const [showNoticePopup, setShowNoticePopup] = useState(true);
+  const [isSendingNoticeEmail, setIsSendingNoticeEmail] = useState(false);
+  const [noticeEmailStatus, setNoticeEmailStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const handleSendNoticeEmail = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isSendingNoticeEmail) return;
+    setIsSendingNoticeEmail(true);
+    setNoticeEmailStatus(null);
+
+    try {
+      const response = await fetch("/api/v1/candidate/send-cv-notice", {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setNoticeEmailStatus({
+          type: "success",
+          message: data.message || "Email sent successfully! Check your inbox.",
+        });
+      } else {
+        setNoticeEmailStatus({
+          type: "error",
+          message: data.error || "Unable to send notice email. Please try again.",
+        });
+      }
+    } catch {
+      setNoticeEmailStatus({
+        type: "error",
+        message: "Connection error. Please try again.",
+      });
+    } finally {
+      setIsSendingNoticeEmail(false);
+    }
+  };
+
 
   useEffect(() => {
     if (status === "loading") return;
@@ -176,59 +222,66 @@ export default function CandidateApplicationPage() {
     setError("");
     setSuccess(false);
 
-    if (!file) {
+    if (!file && !candidate?.cvUrl) {
       setError("Select your CV in PDF format before submitting.");
       return;
     }
-    if (preferences.some((preference) => !preference)) {
-      setError("Select all four company preferences.");
-      return;
-    }
-    if (new Set(preferences).size !== 4) {
+    const selectedPreferences = preferences.filter(Boolean);
+    if (new Set(selectedPreferences).size !== selectedPreferences.length) {
       setError("Each company preference must be different.");
       return;
     }
 
     setIsSubmitting(true);
-    setSubmissionStage("Preparing secure upload");
 
     try {
-      const signatureResponse = await fetch(
-        "/api/v1/candidate/application/upload-signature",
-        { method: "POST" },
-      );
-      const signatureData = (await signatureResponse.json()) as
-        | UploadSignature
-        | { error?: string };
-      if (!signatureResponse.ok || !("signature" in signatureData)) {
-        throw new Error(
-          "error" in signatureData && signatureData.error
-            ? signatureData.error
-            : "Unable to prepare the CV upload",
+      let uploadedCvUrl = candidate?.cvUrl || "";
+      let uploadedPublicId = "";
+
+      if (file) {
+        setSubmissionStage("Preparing secure upload");
+        const signatureResponse = await fetch(
+          "/api/v1/candidate/application/upload-signature",
+          { method: "POST" },
         );
-      }
+        const signatureData = (await signatureResponse.json()) as
+          | UploadSignature
+          | { error?: string };
+        if (!signatureResponse.ok || !("signature" in signatureData)) {
+          throw new Error(
+            "error" in signatureData && signatureData.error
+              ? signatureData.error
+              : "Unable to prepare the CV upload",
+          );
+        }
 
-      setSubmissionStage("Uploading CV...");
-      const cloudinaryForm = new FormData();
-      cloudinaryForm.set("file", file);
-      cloudinaryForm.set("api_key", signatureData.apiKey);
-      cloudinaryForm.set("timestamp", String(signatureData.timestamp));
-      cloudinaryForm.set("signature", signatureData.signature);
-      cloudinaryForm.set("folder", signatureData.folder);
-      cloudinaryForm.set("public_id", signatureData.public_id);
-      cloudinaryForm.set("overwrite", String(signatureData.overwrite));
-      cloudinaryForm.set("invalidate", String(signatureData.invalidate));
+        setSubmissionStage("Uploading CV...");
+        const cloudinaryForm = new FormData();
+        cloudinaryForm.set("file", file);
+        cloudinaryForm.set("api_key", signatureData.apiKey);
+        cloudinaryForm.set("timestamp", String(signatureData.timestamp));
+        cloudinaryForm.set("signature", signatureData.signature);
+        cloudinaryForm.set("folder", signatureData.folder);
+        cloudinaryForm.set("public_id", signatureData.public_id);
+        if (signatureData.type) cloudinaryForm.set("type", signatureData.type);
+        if (signatureData.access_mode) cloudinaryForm.set("access_mode", signatureData.access_mode);
+        cloudinaryForm.set("overwrite", String(signatureData.overwrite));
+        cloudinaryForm.set("invalidate", String(signatureData.invalidate));
 
-      const uploadResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/raw/upload`,
-        { method: "POST", body: cloudinaryForm },
-      );
-      const uploadData = (await uploadResponse.json()) as CloudinaryUpload;
-      if (!uploadResponse.ok || !uploadData.secure_url || !uploadData.public_id) {
-        throw new Error(uploadData.error?.message || "Cloudinary rejected the CV upload");
-      }
-      if (uploadData.public_id !== signatureData.expectedPublicId) {
-        throw new Error("Cloudinary returned an unexpected CV path");
+        const uploadResponse = await fetch(
+          `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/raw/upload`,
+          { method: "POST", body: cloudinaryForm },
+        );
+        const uploadData = (await uploadResponse.json()) as CloudinaryUpload;
+        if (!uploadResponse.ok || !uploadData.secure_url || !uploadData.public_id) {
+          throw new Error(uploadData.error?.message || "Cloudinary rejected the CV upload");
+        }
+        if (uploadData.public_id !== signatureData.expectedPublicId) {
+          throw new Error("Cloudinary returned an unexpected CV path");
+        }
+
+        uploadedCvUrl = uploadData.secure_url;
+        uploadedPublicId = uploadData.public_id;
       }
 
       setSubmissionStage("Saving application");
@@ -236,14 +289,15 @@ export default function CandidateApplicationPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          cvUrl: uploadData.secure_url,
-          publicId: uploadData.public_id,
+          cvUrl: uploadedCvUrl,
+          publicId: uploadedPublicId,
           preferences,
           comment,
         }),
       });
       const data = (await response.json()) as {
         success?: boolean;
+        candidate?: CandidateApplication;
         error?: string;
       };
 
@@ -252,6 +306,12 @@ export default function CandidateApplicationPage() {
         return;
       }
 
+      if (data.candidate) {
+        setCandidate(data.candidate);
+      } else if (uploadedCvUrl) {
+        setCandidate((prev) => (prev ? { ...prev, cvUrl: uploadedCvUrl } : null));
+      }
+      setFile(null);
       setSuccess(true);
     } catch (submissionError: unknown) {
       setError(
@@ -309,7 +369,7 @@ export default function CandidateApplicationPage() {
                           {item.status === "0" ? "Pending" : item.status === "1" ? "Scheduled" : item.status === "ONGOING" ? "Ongoing" : "Completed"}
                         </span>
                       </div>
-                      
+
                       {item.status === "ONGOING" && (
                         <div className="candidate-interview-ongoing-notice">
                           <span>🔔</span> Your mock interview session is currently active. Please report to your assigned panel list.
@@ -333,7 +393,7 @@ export default function CandidateApplicationPage() {
                               <span className="rating-value">{item.industry_ready || "N/A"}/10</span>
                             </div>
                           </div>
-                          
+
                           {item.written_feedback && (
                             <div className="candidate-feedback-notes">
                               <h5>Panelist Advice & Notes</h5>
@@ -349,161 +409,275 @@ export default function CandidateApplicationPage() {
             )}
 
             <form className="candidate-application-form" onSubmit={handleSubmit}>
-            <section className="application-section" aria-labelledby="applicant-details-title">
-              <div className="application-section__heading">
-                <span>01</span>
-                <div>
-                  <h2 id="applicant-details-title">Applicant details</h2>
-                  <p>These details come from your verified candidate profile.</p>
+              <section className="application-section" aria-labelledby="applicant-details-title">
+                <div className="application-section__heading">
+                  <span>01</span>
+                  <div>
+                    <h2 id="applicant-details-title">Applicant details</h2>
+                    <p>These details come from your verified candidate profile.</p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="application-details-grid">
-                {[
-                  ["Name", candidate.name],
-                  ["Email address", candidate.email],
-                  ["Phone number", candidate.phone],
-                  ["University ID", candidate.studentId],
-                  ["Faculty", candidate.faculty],
-                  ["Department", candidate.department],
-                ].map(([label, value]) => (
-                  <label key={label}>
-                    <span>{label}</span>
-                    <input type="text" value={value} readOnly />
-                  </label>
-                ))}
-              </div>
-            </section>
-
-            <section className="application-section" aria-labelledby="cv-upload-title">
-              <div className="application-section__heading">
-                <span>02</span>
-                <div>
-                  <h2 id="cv-upload-title">Curriculum vitae</h2>
-                  <p>File types accepted: PDF, maximum file size: 10 MB</p>
+                <div className="application-details-grid">
+                  {[
+                    ["Name", candidate.name],
+                    ["Email address", candidate.email],
+                    ["Phone number", candidate.phone],
+                    ["University ID", candidate.studentId],
+                    ["Faculty", candidate.faculty],
+                    ["Department", candidate.department],
+                  ].map(([label, value]) => (
+                    <label key={label}>
+                      <span>{label}</span>
+                      <input type="text" value={value ?? ""} readOnly />
+                    </label>
+                  ))}
                 </div>
-              </div>
+              </section>
 
-              <div
-                className={`application-dropzone${isDragging ? " application-dropzone--active" : ""}`}
-                onDragEnter={(event) => {
-                  event.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragOver={(event) => event.preventDefault()}
-                onDragLeave={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+              <section className="application-section" aria-labelledby="cv-upload-title">
+                <div className="application-section__heading">
+                  <span>02</span>
+                  <div>
+                    <h2 id="cv-upload-title">Curriculum vitae</h2>
+                    <p>File types accepted: PDF, maximum file size: 10 MB</p>
+                  </div>
+                </div>
+
+                <div
+                  className={`application-dropzone${isDragging ? " application-dropzone--active" : ""}`}
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDragLeave={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                      setIsDragging(false);
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
                     setIsDragging(false);
-                  }
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  setIsDragging(false);
-                  selectFile(event.dataTransfer.files[0]);
-                }}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  onChange={(event) => selectFile(event.target.files?.[0])}
-                  disabled={isSubmitting}
-                />
-                {file ? <FileText size={34} aria-hidden="true" /> : <UploadCloud size={34} aria-hidden="true" />}
-                <strong>{file ? file.name : "Drag and drop your CV here"}</strong>
-                <span>
-                  {file
-                    ? `${(file.size / 1024 / 1024).toFixed(2)} MB - PDF verified`
-                    : "or click to browse files"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isSubmitting}
+                    selectFile(event.dataTransfer.files[0]);
+                  }}
                 >
-                  Browse files
-                </button>
-              </div>
-            </section>
-
-            <section className="application-section" aria-labelledby="preferences-title">
-              <div className="application-section__heading">
-                <span>03</span>
-                <div>
-                  <h2 id="preferences-title">Company preferences</h2>
-                  <p>Rank four different companies in your preferred order.</p>
-                </div>
-              </div>
-
-              <div className="application-preferences-grid">
-                {preferences.map((preference, index) => (
-                  <label key={index}>
-                    <span>Preference {index + 1}</span>
-                    <select
-                      value={preference}
-                      onChange={(event) => updatePreference(index, event.target.value)}
-                      disabled={isSubmitting}
-                      required
-                    >
-                      <option value="" disabled>Select company</option>
-                      {companies.map((company) => (
-                        <option
-                          value={company.id}
-                          key={company.id}
-                          disabled={preferences.some(
-                            (selected, selectedIndex) =>
-                              selectedIndex !== index && selected === company.id,
-                          )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={(event) => selectFile(event.target.files?.[0])}
+                    disabled={isSubmitting}
+                  />
+                  {file ? (
+                    <>
+                      <FileText size={34} className="text-[#1688b2]" aria-hidden="true" />
+                      <strong>{file.name}</strong>
+                      <span className="text-emerald-700 font-semibold">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB - PDF verified (new file selected)
+                      </span>
+                      <div className="flex items-center gap-3 mt-2 relative z-10" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isSubmitting}
+                          className="px-3.5 py-1.5 text-xs font-bold rounded-xl border border-[#002454]/20 hover:bg-slate-100 text-[#002454] bg-white transition-colors shadow-sm"
                         >
-                          {company.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
-            </section>
-
-            <section className="application-section" aria-labelledby="comment-title">
-              <div className="application-section__heading">
-                <span>04</span>
-                <div>
-                  <h2 id="comment-title">Comment</h2>
-                  <p>Optional</p>
+                          Change File
+                        </button>
+                      </div>
+                    </>
+                  ) : candidate?.cvUrl ? (
+                    <>
+                      <FileText size={34} className="text-[#1688b2]" aria-hidden="true" />
+                      <strong>CV Currently Uploaded</strong>
+                      <span className="text-slate-600 font-medium">
+                        Your CV is active. Drag & drop a new PDF to update it, or view your current CV below.
+                      </span>
+                      <div className="cv-dropzone-actions" onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href="/api/v1/candidate/cv/me"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="cv-dropzone-btn cv-dropzone-btn--primary"
+                        >
+                          <ExternalLink size={14} /> View Uploaded CV
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isSubmitting}
+                          className="cv-dropzone-btn cv-dropzone-btn--secondary"
+                        >
+                          Replace CV
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud size={34} aria-hidden="true" />
+                      <strong>Drag and drop your CV here</strong>
+                      <span>or click to browse files</span>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isSubmitting}
+                      >
+                        Browse files
+                      </button>
+                    </>
+                  )}
                 </div>
-              </div>
+              </section>
 
-              <label className="application-comment">
-                <span>Additional comment</span>
-                <textarea
-                  value={comment}
-                  onChange={(event) => setComment(event.target.value)}
-                  maxLength={2000}
-                  rows={5}
-                  disabled={isSubmitting}
-                />
-                <small>{comment.length} / 2000</small>
-              </label>
-            </section>
+              <section className="application-section" aria-labelledby="preferences-title">
+                <div className="application-section__heading">
+                  <span>03</span>
+                  <div>
+                    <h2 id="preferences-title">Company preferences</h2>
+                    <p>Rank four different companies in your preferred order.</p>
+                  </div>
+                </div>
 
-            {error && <div className="signup-error" role="alert">{error}</div>}
+                <div className="application-preferences-grid">
+                  {preferences.map((preference, index) => (
+                    <label key={index}>
+                      <span>Preference {index + 1}</span>
+                      <select
+                        value={preference}
+                        onChange={(event) => updatePreference(index, event.target.value)}
+                        disabled={isSubmitting}
+                      >
+                        <option value="">Select company (optional)</option>
+                        {companies.map((company) => (
+                          <option
+                            value={company.id}
+                            key={company.id}
+                            disabled={preferences.some(
+                              (selected, selectedIndex) =>
+                                selectedIndex !== index && selected === company.id,
+                            )}
+                          >
+                            {company.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+              </section>
 
-            <button
-              className="application-submit"
-              type="submit"
-              disabled={isSubmitting || companies.length < 4}
-            >
-              {isSubmitting ? (
-                <Loader2 className="signup-spinner" size={19} aria-hidden="true" />
-              ) : null}
-              {isSubmitting ? submissionStage : "Submit application"}
-            </button>
+              <section className="application-section" aria-labelledby="comment-title">
+                <div className="application-section__heading">
+                  <span>04</span>
+                  <div>
+                    <h2 id="comment-title">Comment</h2>
+                    <p>Optional</p>
+                  </div>
+                </div>
+
+                <label className="application-comment">
+                  <span>Additional comment</span>
+                  <textarea
+                    value={comment}
+                    onChange={(event) => setComment(event.target.value)}
+                    maxLength={2000}
+                    rows={5}
+                    disabled={isSubmitting}
+                  />
+                  <small>{comment.length} / 2000</small>
+                </label>
+              </section>
+
+              {error && <div className="signup-error" role="alert">{error}</div>}
+
+              <button
+                className="application-submit"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="signup-spinner" size={19} aria-hidden="true" />
+                ) : null}
+                {isSubmitting ? submissionStage : "Submit application"}
+              </button>
             </form>
           </>
         ) : (
           <div className="signup-error" role="alert">{error}</div>
         )}
       </main>
+
+      {showNoticePopup && (
+        <div
+          className="cv-notice-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowNoticePopup(false);
+          }}
+        >
+          <section
+            className="cv-notice-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cv-notice-title"
+          >
+            <button
+              type="button"
+              className="cv-notice-close-btn"
+              onClick={() => setShowNoticePopup(false)}
+              aria-label="Close notice"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="cv-notice-modal__content">
+              <div className="cv-notice-modal__icon" aria-hidden="true">
+                <Info size={30} />
+              </div>
+              <h2 id="cv-notice-title">Companies Will Be Available for Selection Soon!</h2>
+              <div className="cv-notice-text">
+                <p>
+                  Company selection will open soon. Once company preferences are open for selection, you will be notified via email and through our website. Please remember to check your spam or junk folder and mark our email address as &apos;not spam&apos; to ensure you receive our updates. Alternatively, you may check our website regularly.
+                </p>
+                <p style={{ marginTop: "0.75rem" }}>
+                  Click{" "}
+                  <button
+                    type="button"
+                    onClick={handleSendNoticeEmail}
+                    disabled={isSendingNoticeEmail}
+                    className="cv-notice-trigger-btn"
+                  >
+                    {isSendingNoticeEmail ? "sending email..." : "here"}
+                  </button>{" "}
+                  to check your inbox.
+                </p>
+              </div>
+
+              {noticeEmailStatus && (
+                <div
+                  className={`cv-notice-status cv-notice-status--${noticeEmailStatus.type}`}
+                  role="status"
+                >
+                  {noticeEmailStatus.type === "success" ? (
+                    <CheckCircle2 size={16} />
+                  ) : (
+                    <AlertCircle size={16} />
+                  )}
+                  <span>{noticeEmailStatus.message}</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="cv-notice-dismiss-btn"
+                onClick={() => setShowNoticePopup(false)}
+              >
+                Understood
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {success && (
         <div
