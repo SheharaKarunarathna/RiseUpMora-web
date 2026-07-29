@@ -136,12 +136,12 @@ const footerQuickLinks = [
 const footerEvents = [
   {
     title: "Registrations Opening",
-    date: "July 17th, 2026",
+    date: "July 27th, 2026",
   },
-  {
-    title: "Registrations Closing",
-    date: "July 29th, 2026",
-  },
+  // {
+  //   title: "Registrations Closing",
+  //   date: "July th, 2026",
+  // },
   {
     title: "Internship & Mock Interview Fair",
     date: "August 6th, 2026",
