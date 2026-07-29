@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Building2, BookOpen, UserRound, GraduationCap, CalendarCheck, Sparkles, FileText } from "lucide-react";
+import { Building2, BookOpen, UserRound, GraduationCap, CalendarCheck, FileText } from "lucide-react";
 
 interface Metrics {
   totalUsers: number;
@@ -62,14 +62,9 @@ export default function DashboardClient({ metrics }: { metrics: Metrics }) {
       `}</style>
 
       {/* Header */}
-      <div className="flex items-center gap-3 animate-smooth" style={{ animationDelay: '0ms' }}>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f6c430] shadow-sm">
-          <Sparkles size={20} className="text-[#002454]" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-extrabold text-[#002454]">Platform Overview</h1>
-          <p className="text-sm text-[#002454]/55">Real-time metrics for Rise Up Mora</p>
-        </div>
+      <div className="animate-smooth" style={{ animationDelay: '0ms' }}>
+        <h1 className="text-2xl font-extrabold text-[#002454]">Platform Overview</h1>
+        <p className="text-sm text-[#002454]/55">Real-time metrics for Rise Up Mora</p>
       </div>
 
       {/* Event Activity */}
