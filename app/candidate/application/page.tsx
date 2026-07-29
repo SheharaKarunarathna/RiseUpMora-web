@@ -574,10 +574,10 @@ export default function CandidateApplicationPage() {
               <div className="cv-notice-modal__icon" aria-hidden="true">
                 <Info size={30} />
               </div>
-              <h2 id="cv-notice-title">CV Submissions Opening Soon!</h2>
+              <h2 id="cv-notice-title">Companies Will Be Available for Selection Soon!</h2>
               <div className="cv-notice-text">
                 <p>
-                  The CV submission period will open by the end of July. Once submissions begin, you will be notified via email and through our website. Please remember to check your spam or junk folder and mark our email address as &apos;not spam&apos; to ensure you receive our updates. Alternatively, you may check our website regularly.
+                  Company selection will open soon. Once company preferences are open for selection, you will be notified via email and through our website. Please remember to check your spam or junk folder and mark our email address as &apos;not spam&apos; to ensure you receive our updates. Alternatively, you may check our website regularly.
                 </p>
                 <p style={{ marginTop: "0.75rem" }}>
                   Click{" "}

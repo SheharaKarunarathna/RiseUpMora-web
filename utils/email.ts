@@ -146,7 +146,7 @@ export const sendCvNoticeEmail = async (to: string, name?: string) => {
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Rise Up Mora - CV Submission Notice</title>
+      <title>Rise Up Mora - Company Selection Notice</title>
       <style>
         body { font-family: Arial, sans-serif; background-color: #f8fcfe; margin: 0; padding: 0; }
         .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,36,84,0.05); border: 1px solid rgba(0,36,84,0.1); }
@@ -165,10 +165,10 @@ export const sendCvNoticeEmail = async (to: string, name?: string) => {
       <div class="container">
         <div class="header"><h1>Rise Up <span>Mora</span></h1></div>
         <div class="content">
-          <h2>CV Submissions Opening Soon</h2>
+          <h2>Company Selection Opening Soon</h2>
           <p>Hello ${safeName},</p>
           <div class="notice-box">
-            <p>The CV submission period will open by the end of July. Once submissions begin, you will be notified via email and through our website.</p>
+            <p>Company selection will open soon. Once company preferences are open for selection, you will be notified via email and through our website.</p>
           </div>
           <p>Please remember to check your spam or junk folder and mark our email address as 'not spam' to ensure you receive our updates. Alternatively, you may check our website regularly.</p>
         </div>
@@ -181,7 +181,7 @@ export const sendCvNoticeEmail = async (to: string, name?: string) => {
   await transporter.sendMail({
     from: `"Rise Up Mora" <${process.env.EMAIL_USER}>`,
     to,
-    subject: "CV Submissions Opening Soon - Rise Up Mora",
+    subject: "Company Selection Opening Soon - Rise Up Mora",
     html,
   });
 };
