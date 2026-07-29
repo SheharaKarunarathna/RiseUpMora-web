@@ -29,6 +29,12 @@ function SiteHeaderContent() {
   const router = useRouter();
   const isHomePage = pathname === "/";
 
+  const handleSignOut = async () => {
+    setIsUserMenuOpen(false);
+    setIsMenuOpen(false);
+    await signOut({ callbackUrl: "/", redirect: true });
+  };
+
   useEffect(() => {
     if (searchParams.get("login") === "true") {
       setIsSignInOpen(true);
@@ -88,9 +94,8 @@ function SiteHeaderContent() {
   return (
     <>
       <header
-        className={`site-header${isScrolled ? " site-header--scrolled" : ""}${
-          isMenuOpen ? " site-header--menu-open" : ""
-        }`}
+        className={`site-header${isScrolled ? " site-header--scrolled" : ""}${isMenuOpen ? " site-header--menu-open" : ""
+          }`}
       >
         <Link
           className="site-brand"
@@ -138,7 +143,20 @@ function SiteHeaderContent() {
 
               {isUserMenuOpen && (
                 <div className="site-user-menu__dropdown" role="menu">
-                  <div className="site-user-menu__account" role="presentation">
+                  <Link
+                    href={
+                      session.user.role === "company_coordinator"
+                        ? "/company/dashboard"
+                        : session.user.role === "panelist"
+                        ? "/panelist/dashboard"
+                        : session.user.role === "admin"
+                        ? "/admin/dashboard"
+                        : "/candidate/dashboard"
+                    }
+                    className="site-user-menu__account"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    title="Go to dashboard"
+                  >
                     <div aria-hidden="true">
                       <UserRound size={18} />
                     </div>
@@ -146,43 +164,13 @@ function SiteHeaderContent() {
                       <strong>{session.user.name || "Candidate"}</strong>
                       <small>{session.user.email}</small>
                     </span>
-                  </div>
+                  </Link>
                   <div className="site-user-menu__divider" role="separator" />
-                  
-                  {session.user.role === "company_coordinator" && (
-                    <>
-                      <Link
-                        href="/company/dashboard"
-                        className="site-user-menu__dashboard-link"
-                        role="menuitem"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <LayoutDashboard size={17} aria-hidden="true" />
-                        Dashboard
-                      </Link>
-                      <div className="site-user-menu__divider" role="separator" />
-                    </>
-                  )}
-
-                  {session.user.role === "panelist" && (
-                    <>
-                      <Link
-                        href="/panelist/dashboard"
-                        className="site-user-menu__dashboard-link"
-                        role="menuitem"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <LayoutDashboard size={17} aria-hidden="true" />
-                        Dashboard
-                      </Link>
-                      <div className="site-user-menu__divider" role="separator" />
-                    </>
-                  )}
 
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => signOut({ callbackUrl: "/" })}
+                    onClick={handleSignOut}
                   >
                     <LogOut size={17} aria-hidden="true" />
                     Log out

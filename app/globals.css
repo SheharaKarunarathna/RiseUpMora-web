@@ -476,6 +476,7 @@ html {
 
 .site-user-menu {
   position: relative;
+  z-index: 50;
   justify-self: end;
 }
 
@@ -533,6 +534,14 @@ html {
   padding: 0.55rem 0.45rem 0.65rem;
   align-items: center;
   gap: 0.7rem;
+  text-decoration: none;
+  border-radius: 0.35rem;
+  transition: background 180ms ease;
+}
+
+.site-user-menu__account:hover,
+.site-user-menu__account:focus-visible {
+  background: rgb(51 174 218 / 10%);
 }
 
 .site-user-menu__account > div {
@@ -2175,14 +2184,18 @@ html {
   position: relative;
   isolation: isolate;
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 88% 16%, rgb(51 174 218 / 14%), transparent 28rem),
     #f8fcfe;
   color: #002454;
 }
 
-.candidate-application-page > .site-header,
+.candidate-application-page > .site-header {
+  position: relative;
+  z-index: 20;
+}
+
 .candidate-application-main {
   position: relative;
   z-index: 1;
