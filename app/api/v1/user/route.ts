@@ -20,10 +20,15 @@ export async function GET(req: Request) {
     let sql = "";
     if (role === "candidate") {
       sql = `
-        SELECT u.id as user_id, u.name, u.email, c.student_id, c.faculty, c.department, c.contact_number,
-               c.cv_url, c.pref_1, c.pref_2, c.pref_3, c.pref_4
+        SELECT u.id as user_id, c.id as candidate_id, u.name, u.email, c.student_id, c.faculty, c.department, c.contact_number, c.cv_url,
+               c.application_comment,
+               cp1.name as pref_1_name, cp2.name as pref_2_name, cp3.name as pref_3_name, cp4.name as pref_4_name
         FROM users u 
         LEFT JOIN candidates c ON u.id = c.user_id 
+        LEFT JOIN companies cp1 ON c.pref_1::uuid = cp1.id
+        LEFT JOIN companies cp2 ON c.pref_2::uuid = cp2.id
+        LEFT JOIN companies cp3 ON c.pref_3::uuid = cp3.id
+        LEFT JOIN companies cp4 ON c.pref_4::uuid = cp4.id
         WHERE u.role = 'candidate'
         ORDER BY COALESCE(c.created_at, u.created_at) DESC
       `;

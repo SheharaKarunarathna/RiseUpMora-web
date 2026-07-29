@@ -51,6 +51,7 @@ export async function POST() {
     folder: asset.folder,
     public_id: asset.publicId,
     timestamp,
+    type: "authenticated",
     overwrite: true,
     invalidate: true,
   } as const;

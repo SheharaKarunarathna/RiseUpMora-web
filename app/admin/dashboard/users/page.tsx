@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2, Plus, Mail, Building2, BookOpen, ChevronDown, Trash2, Search, X, SlidersHorizontal, User, FileText, ListOrdered, Phone, GraduationCap } from "lucide-react";
+import { Loader2, Plus, Mail, Building2, BookOpen, ChevronDown, Trash2, Search, X, SlidersHorizontal, User, FileText, ListOrdered, Phone, GraduationCap, Eye } from "lucide-react";
 
 type RoleType = "candidate" | "company_coordinator" | "department_coordinator" | "panelist";
 
@@ -10,6 +9,7 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<any[]>([]);
+  const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
 
   // Candidate search & filter
   const [candidateSearch, setCandidateSearch] = useState("");
@@ -611,9 +611,10 @@ export default function UserManagementPage() {
                         {activeTab === "candidate" && (
                           <button
                             onClick={() => setViewUser(user)}
-                            className="rounded-lg bg-[#33aeda]/10 px-3 py-2 text-xs font-extrabold text-[#33aeda] transition-colors hover:bg-[#33aeda]/20"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-[#33aeda]/20 bg-[#33aeda]/10 hover:bg-[#33aeda]/20 px-2.5 py-1 text-xs font-bold text-[#1688b2] transition-colors"
+                            title="View Candidate Profile"
                           >
-                            View
+                            <Eye size={14} /> Profile
                           </button>
                         )}
                         <button
@@ -816,7 +817,7 @@ export default function UserManagementPage() {
                     </h3>
                     {viewUser.cv_url ? (
                       <a
-                        href={viewUser.cv_url}
+                        href={`/api/v1/candidate/cv/${viewUser.candidate_id || viewUser.user_id}`}
                         target="_blank"
                         rel="noreferrer"
                         className="group flex items-center justify-between rounded-xl border border-green-200 bg-green-50 p-3 transition-colors hover:bg-green-100"
@@ -850,23 +851,30 @@ export default function UserManagementPage() {
                   <h3 className="mb-4 flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider text-[#002454]/50">
                     <ListOrdered size={16} /> Company Preferences
                   </h3>
-                  {[viewUser.pref_1, viewUser.pref_2, viewUser.pref_3, viewUser.pref_4].some(p => p) ? (
+                  {[
+                    viewUser.pref_1_name || (companies.find(c => c.id === viewUser.pref_1)?.name),
+                    viewUser.pref_2_name || (companies.find(c => c.id === viewUser.pref_2)?.name),
+                    viewUser.pref_3_name || (companies.find(c => c.id === viewUser.pref_3)?.name),
+                    viewUser.pref_4_name || (companies.find(c => c.id === viewUser.pref_4)?.name),
+                  ].some(Boolean) ? (
                     <div className="space-y-2">
-                      {[viewUser.pref_1, viewUser.pref_2, viewUser.pref_3, viewUser.pref_4]
+                      {[
+                        viewUser.pref_1_name || (companies.find(c => c.id === viewUser.pref_1)?.name),
+                        viewUser.pref_2_name || (companies.find(c => c.id === viewUser.pref_2)?.name),
+                        viewUser.pref_3_name || (companies.find(c => c.id === viewUser.pref_3)?.name),
+                        viewUser.pref_4_name || (companies.find(c => c.id === viewUser.pref_4)?.name),
+                      ]
                         .filter(Boolean)
-                        .map((prefId, i) => {
-                          const comp = companies.find(c => c.id === prefId);
-                          return (
-                            <div key={i} className="flex items-center gap-3 rounded-xl border border-[#002454]/5 bg-[#f8fcfe] p-2.5">
-                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#33aeda]/10 text-xs font-black text-[#33aeda]">
-                                {i + 1}
-                              </span>
-                              <span className="text-sm font-bold text-[#002454]">
-                                {comp ? comp.name : "Unknown Company"}
-                              </span>
-                            </div>
-                          );
-                        })}
+                        .map((prefName, i) => (
+                          <div key={i} className="flex items-center gap-3 rounded-xl border border-[#002454]/5 bg-[#f8fcfe] p-2.5">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#33aeda]/10 text-xs font-black text-[#33aeda]">
+                              {i + 1}
+                            </span>
+                            <span className="text-sm font-bold text-[#002454]">
+                              {prefName}
+                            </span>
+                          </div>
+                        ))}
                     </div>
                   ) : (
                     <div className="rounded-xl border border-dashed border-[#002454]/20 bg-[#f8fcfe] p-4 text-center">

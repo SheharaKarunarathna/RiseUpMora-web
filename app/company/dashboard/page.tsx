@@ -355,7 +355,7 @@ function PreferenceTable({
                     <td className="py-3 pl-4 text-right">
                       {cand.cv_url ? (
                         <a
-                          href={cand.cv_url}
+                          href={`/api/v1/candidate/cv/${cand.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 rounded-lg bg-[#33aeda]/10 hover:bg-[#33aeda]/20 px-2.5 py-1.5 text-xs font-bold text-[#1688b2] transition-colors"
