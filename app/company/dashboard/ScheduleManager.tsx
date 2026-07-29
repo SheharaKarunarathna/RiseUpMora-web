@@ -14,13 +14,17 @@ import {
   CalendarDays, 
   Clock, 
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  GripVertical,
+  Search,
+  X
 } from "lucide-react";
 
 interface Allocation {
   id?: string;
   candidate_id: string;
   candidate_name: string;
+  student_id: string;
   interview_date: string;
   time_slot: string;
   status: string;
@@ -29,6 +33,7 @@ interface Allocation {
 interface InterestedCandidate {
   candidate_id: string;
   candidate_name: string;
+  student_id: string;
   email: string;
   preference_num: number;
 }
@@ -37,6 +42,7 @@ interface Slot {
   id: string;
   candidateId: string;
   candidateName: string;
+  studentId: string;
   timeSlot: string;
   date: string;
   status: string;
@@ -89,6 +95,47 @@ export default function ScheduleManager({
   const [isInitializing, setIsInitializing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [searchIndex, setSearchIndex] = useState("");
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+
+  const onDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const onDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+  };
+
+  const onDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === index) {
+      setDraggedIdx(null);
+      return;
+    }
+    
+    const newSlots = [...slots];
+    const assignments = newSlots.map(s => ({
+      candidateId: s.candidateId,
+      candidateName: s.candidateName,
+      studentId: s.studentId,
+      status: s.status,
+    }));
+    
+    const [moved] = assignments.splice(draggedIdx, 1);
+    assignments.splice(index, 0, moved);
+    
+    const reorderedSlots = newSlots.map((slot, i) => ({
+      ...slot,
+      candidateId: assignments[i].candidateId,
+      candidateName: assignments[i].candidateName,
+      studentId: assignments[i].studentId,
+      status: assignments[i].status,
+    }));
+    
+    setSlots(reorderedSlots);
+    setDraggedIdx(null);
+  };
 
   useEffect(() => {
     if (initialAllocations && initialAllocations.length > 0) {
@@ -96,6 +143,7 @@ export default function ScheduleManager({
         id: a.id || `temp-${idx}-${Date.now()}`,
         candidateId: a.candidate_id,
         candidateName: a.candidate_name,
+        studentId: a.student_id || "-",
         timeSlot: a.time_slot,
         date: a.interview_date ? new Date(a.interview_date).toISOString().split("T")[0] : "2026-08-06",
         status: a.status,
@@ -192,14 +240,17 @@ export default function ScheduleManager({
     const tempId = newSlots[index].candidateId;
     const tempName = newSlots[index].candidateName;
     const tempStatus = newSlots[index].status;
+    const tempStudentId = newSlots[index].studentId;
 
     newSlots[index].candidateId = newSlots[index - 1].candidateId;
     newSlots[index].candidateName = newSlots[index - 1].candidateName;
     newSlots[index].status = newSlots[index - 1].status;
+    newSlots[index].studentId = newSlots[index - 1].studentId;
 
     newSlots[index - 1].candidateId = tempId;
     newSlots[index - 1].candidateName = tempName;
     newSlots[index - 1].status = tempStatus;
+    newSlots[index - 1].studentId = tempStudentId;
 
     setSlots(newSlots);
   };
@@ -212,14 +263,17 @@ export default function ScheduleManager({
     const tempId = newSlots[index].candidateId;
     const tempName = newSlots[index].candidateName;
     const tempStatus = newSlots[index].status;
+    const tempStudentId = newSlots[index].studentId;
 
     newSlots[index].candidateId = newSlots[index + 1].candidateId;
     newSlots[index].candidateName = newSlots[index + 1].candidateName;
     newSlots[index].status = newSlots[index + 1].status;
+    newSlots[index].studentId = newSlots[index + 1].studentId;
 
     newSlots[index + 1].candidateId = tempId;
     newSlots[index + 1].candidateName = tempName;
     newSlots[index + 1].status = tempStatus;
+    newSlots[index + 1].studentId = tempStudentId;
 
     setSlots(newSlots);
   };
@@ -241,6 +295,7 @@ export default function ScheduleManager({
       id: `new-${Date.now()}`,
       candidateId: "",
       candidateName: "Unassigned",
+      studentId: "-",
       timeSlot: newTimeSlot,
       date,
       status: "0",
@@ -264,6 +319,7 @@ export default function ScheduleManager({
             ...s,
             candidateId: candidateId,
             candidateName: selected ? selected.candidate_name : "Unassigned",
+            studentId: selected ? (selected.student_id || "N/A") : "-",
           };
         }
         return s;
@@ -399,12 +455,41 @@ export default function ScheduleManager({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#f8fcfe] p-4 rounded-2xl border border-[#002454]/5">
+            <div className="flex items-center gap-3 w-full sm:w-auto relative">
+              <div className="bg-white p-2 rounded-xl border border-[#002454]/10 shadow-sm">
+                <Search size={16} className="text-[#33aeda]" />
+              </div>
+              <div className="relative w-full sm:w-64">
+                <input 
+                  type="text" 
+                  placeholder="Search candidate by index..."
+                  value={searchIndex}
+                  onChange={(e) => setSearchIndex(e.target.value)}
+                  className="w-full rounded-xl border border-[#002454]/10 bg-white px-3.5 py-2 pr-8 text-xs font-bold text-[#002454] outline-none focus:border-[#33aeda] transition-colors"
+                />
+                {searchIndex && (
+                  <button
+                    onClick={() => setSearchIndex("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#002454]/40 hover:text-[#002454]/70 p-1 rounded-full transition-colors"
+                    title="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="text-[10px] font-bold text-[#002454]/50 flex items-center gap-1.5">
+              <GripVertical size={12} /> Drag and drop rows to shift candidate positions
+            </div>
+          </div>
           <div className="overflow-x-auto border border-[#002454]/5 rounded-2xl bg-white">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-[#002454]/5 bg-[#f8fcfe] text-xs font-extrabold uppercase text-[#002454]/50 tracking-wider">
                   <th className="py-4 px-6 w-20">Slot</th>
                   <th className="py-4 px-4 w-44">Time</th>
+                  <th className="py-4 px-4 w-32">Index Number</th>
                   <th className="py-4 px-4">Candidate Assignment</th>
                   <th className="py-4 px-4 text-center w-24">Shift</th>
                   <th className="py-4 px-4 text-center w-36">Status</th>
@@ -414,21 +499,35 @@ export default function ScheduleManager({
               <tbody>
                 {slots.map((slot, index) => {
                   const available = getAvailableCandidates(slot.candidateId);
+                  const isHighlighted = searchIndex && slot.studentId.toLowerCase().includes(searchIndex.toLowerCase());
+                  const isDragged = draggedIdx === index;
                   
                   return (
                     <tr 
                       key={slot.id} 
-                      className={`border-b border-[#002454]/5 last:border-b-0 transition-colors ${
+                      draggable
+                      onDragStart={(e) => onDragStart(e, index)}
+                      onDragOver={(e) => onDragOver(e, index)}
+                      onDrop={(e) => onDrop(e, index)}
+                      className={`border-b border-[#002454]/5 last:border-b-0 transition-colors cursor-grab active:cursor-grabbing ${
+                        isDragged ? "opacity-50 bg-[#e0f2fe]" :
+                        isHighlighted && slot.studentId !== "-" ? "bg-[#fef9c3] hover:bg-[#fef08a]" :
                         slot.status === "ONGOING" ? "bg-amber-50/50 hover:bg-amber-50" : "hover:bg-[#f8fcfe]"
                       }`}
                     >
-                      <td className="py-4 px-6 text-sm font-extrabold text-[#002454]/60">
+                      <td className="py-4 px-6 text-sm font-extrabold text-[#002454]/60 flex items-center gap-2">
+                        <GripVertical size={14} className="text-[#002454]/20 hover:text-[#002454]/50 cursor-grab" />
                         #{index + 1}
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2 text-xs font-bold text-[#002454]">
                           <Clock size={13} className="text-[#33aeda]" />
                           {slot.timeSlot}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="text-xs font-bold text-[#002454]/80">
+                          {slot.studentId}
                         </div>
                       </td>
                       <td className="py-4 px-4">

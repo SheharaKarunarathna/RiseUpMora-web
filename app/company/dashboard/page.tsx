@@ -49,14 +49,78 @@ export default async function CompanyDashboardOverview(props: {
       companyLogo = company.logo_url;
       companyId = company.id;
 
-      // 2. Get allocations count grouped by status
-      const allocationsRes = await query(
-        `SELECT status, COUNT(*) as count
-         FROM allocations
-         WHERE company_id = $1
-         GROUP BY status`,
-        [companyId]
-      );
+      // Fetch all required data concurrently
+      const [
+        allocationsRes,
+        allAllocationsRes,
+        pref1Res,
+        pref2Res,
+        pref3Res,
+        pref4Res,
+        interestedRes
+      ] = await Promise.all([
+        query(
+          `SELECT status, COUNT(*) as count
+           FROM allocations
+           WHERE company_id = $1
+           GROUP BY status`,
+          [companyId]
+        ),
+        query(
+          `SELECT a.id, a.candidate_id, u.name as candidate_name, c.student_id, a.interview_date, a.time_slot, a.status
+           FROM allocations a
+           JOIN candidates c ON a.candidate_id = c.id
+           JOIN users u ON c.user_id = u.id
+           WHERE a.company_id = $1`,
+          [companyId]
+        ),
+        query(
+          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
+           FROM candidates c
+           JOIN users u ON c.user_id = u.id
+           WHERE c.pref_1 = $1
+           ORDER BY c.created_at ASC`,
+          [companyId]
+        ),
+        query(
+          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
+           FROM candidates c
+           JOIN users u ON c.user_id = u.id
+           WHERE c.pref_2 = $1
+           ORDER BY c.created_at ASC`,
+          [companyId]
+        ),
+        query(
+          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
+           FROM candidates c
+           JOIN users u ON c.user_id = u.id
+           WHERE c.pref_3 = $1
+           ORDER BY c.created_at ASC`,
+          [companyId]
+        ),
+        query(
+          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
+           FROM candidates c
+           JOIN users u ON c.user_id = u.id
+           WHERE c.pref_4 = $1
+           ORDER BY c.created_at ASC`,
+          [companyId]
+        ),
+        query(
+          `SELECT c.id as candidate_id, u.name as candidate_name, u.email, c.student_id, c.created_at,
+                  CASE 
+                    WHEN c.pref_1 = $1 THEN 1
+                    WHEN c.pref_2 = $1 THEN 2
+                    WHEN c.pref_3 = $1 THEN 3
+                    WHEN c.pref_4 = $1 THEN 4
+                  END as preference_num
+           FROM candidates c
+           JOIN users u ON c.user_id = u.id
+           WHERE c.pref_1 = $1 OR c.pref_2 = $1 OR c.pref_3 = $1 OR c.pref_4 = $1
+           ORDER BY preference_num ASC, c.created_at ASC`,
+          [companyId]
+        )
+      ]);
 
       allocationsRes.rows.forEach((row: any) => {
         const count = parseInt(row.count, 10);
@@ -68,15 +132,6 @@ export default async function CompanyDashboardOverview(props: {
         }
       });
 
-      // 3. Fetch all allocations for the scheduler
-      const allAllocationsRes = await query(
-        `SELECT a.id, a.candidate_id, u.name as candidate_name, a.interview_date, a.time_slot, a.status
-         FROM allocations a
-         JOIN candidates c ON a.candidate_id = c.id
-         JOIN users u ON c.user_id = u.id
-         WHERE a.company_id = $1`,
-        [companyId]
-      );
       allAllocations = allAllocationsRes.rows;
 
       // Sort allocations chronologically by date and time in JS
@@ -99,62 +154,10 @@ export default async function CompanyDashboardOverview(props: {
         return parse12hToMinutes(a.time_slot) - parse12hToMinutes(b.time_slot);
       });
 
-      // 4. Fetch candidates for each preference level (ordered by created_at ASC for first apply, first serve)
-      const pref1Res = await query(
-        `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
-         FROM candidates c
-         JOIN users u ON c.user_id = u.id
-         WHERE c.pref_1 = $1
-         ORDER BY c.created_at ASC`,
-        [companyId]
-      );
       pref1Candidates = pref1Res.rows;
-
-      const pref2Res = await query(
-        `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
-         FROM candidates c
-         JOIN users u ON c.user_id = u.id
-         WHERE c.pref_2 = $1
-         ORDER BY c.created_at ASC`,
-        [companyId]
-      );
       pref2Candidates = pref2Res.rows;
-
-      const pref3Res = await query(
-        `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
-         FROM candidates c
-         JOIN users u ON c.user_id = u.id
-         WHERE c.pref_3 = $1
-         ORDER BY c.created_at ASC`,
-        [companyId]
-      );
       pref3Candidates = pref3Res.rows;
-
-      const pref4Res = await query(
-        `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
-         FROM candidates c
-         JOIN users u ON c.user_id = u.id
-         WHERE c.pref_4 = $1
-         ORDER BY c.created_at ASC`,
-        [companyId]
-      );
       pref4Candidates = pref4Res.rows;
-
-      // 5. Fetch all interested candidates with preference numbers
-      const interestedRes = await query(
-        `SELECT c.id as candidate_id, u.name as candidate_name, u.email, c.created_at,
-                CASE 
-                  WHEN c.pref_1 = $1 THEN 1
-                  WHEN c.pref_2 = $1 THEN 2
-                  WHEN c.pref_3 = $1 THEN 3
-                  WHEN c.pref_4 = $1 THEN 4
-                END as preference_num
-         FROM candidates c
-         JOIN users u ON c.user_id = u.id
-         WHERE c.pref_1 = $1 OR c.pref_2 = $1 OR c.pref_3 = $1 OR c.pref_4 = $1
-         ORDER BY preference_num ASC, c.created_at ASC`,
-        [companyId]
-      );
       interestedCandidates = interestedRes.rows;
     }
   } catch (error) {
@@ -307,7 +310,8 @@ function PreferenceTable({
                 <tr className="border-b border-[#002454]/5 text-[10px] font-extrabold uppercase text-[#002454]/50 tracking-wider">
                   <th className="pb-2.5 pr-2 w-10">#</th>
                   <th className="pb-2.5 pr-4">Candidate</th>
-                  <th className="pb-2.5 px-4">Student ID / Dept</th>
+                  <th className="pb-2.5 px-4">Index Number</th>
+                  <th className="pb-2.5 px-4">Department</th>
                   <th className="pb-2.5 px-4">Applied Date</th>
                   <th className="pb-2.5 pl-4 text-right">Actions</th>
                 </tr>
@@ -343,6 +347,8 @@ function PreferenceTable({
                       <div className="font-semibold text-xs text-[#002454]/80">
                         {cand.student_id || "N/A"}
                       </div>
+                    </td>
+                    <td className="py-3 px-4">
                       <div className="text-[10px] text-[#002454]/50 mt-0.5 truncate max-w-[100px]" title={cand.department}>
                         {cand.department}
                       </div>

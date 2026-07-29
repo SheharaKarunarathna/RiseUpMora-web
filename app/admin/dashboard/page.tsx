@@ -24,9 +24,11 @@ export default async function AdminDashboardOverview() {
   };
 
   try {
-    const rolesResult = await query("SELECT role, COUNT(*) as count FROM users GROUP BY role");
-    const companiesResult = await query("SELECT COUNT(*) FROM companies");
-    const allocationsResult = await query("SELECT COUNT(*) FROM allocations");
+    const [rolesResult, companiesResult, allocationsResult] = await Promise.all([
+      query("SELECT role, COUNT(*) as count FROM users GROUP BY role"),
+      query("SELECT COUNT(*) FROM companies"),
+      query("SELECT COUNT(*) FROM allocations")
+    ]);
 
     let totalUsers = 0;
     rolesResult.rows.forEach((row) => {
