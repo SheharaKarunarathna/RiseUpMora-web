@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Plus, Mail, Building2, BookOpen, ChevronDown, Trash2, Search, X, SlidersHorizontal } from "lucide-react";
+import { Loader2, Plus, Mail, Building2, BookOpen, ChevronDown, Trash2, Search, X, SlidersHorizontal, Eye, FileText } from "lucide-react";
 
 type RoleType = "candidate" | "company_coordinator" | "department_coordinator" | "panelist";
 
@@ -10,6 +10,7 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<any[]>([]);
+  const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
 
   // Candidate search & filter
   const [candidateSearch, setCandidateSearch] = useState("");
@@ -592,6 +593,16 @@ export default function UserManagementPage() {
                     )}
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {activeTab === "candidate" && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCandidate(user)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-[#33aeda]/20 bg-[#33aeda]/10 hover:bg-[#33aeda]/20 px-2.5 py-1 text-xs font-bold text-[#1688b2] transition-colors"
+                            title="View Candidate Profile"
+                          >
+                            <Eye size={14} /> Profile
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteUser(user.user_id)}
                           className="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50"
@@ -721,6 +732,109 @@ export default function UserManagementPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Candidate Profile Info Modal */}
+      {selectedCandidate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#002454]/30 p-4 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedCandidate(null);
+          }}
+        >
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl relative border border-[#002454]/10 animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setSelectedCandidate(null)}
+              className="absolute right-5 top-5 text-[#002454]/40 hover:text-[#002454] p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-5 border-b border-[#002454]/10 pb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#33aeda]/10 text-[#1688b2] font-extrabold text-lg">
+                {selectedCandidate.name?.charAt(0)?.toUpperCase() || "C"}
+              </div>
+              <div>
+                <h3 className="text-xl font-extrabold text-[#002454]">{selectedCandidate.name}</h3>
+                <p className="text-xs text-[#002454]/60">{selectedCandidate.email}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-3 bg-[#f8fcfe] p-4 rounded-2xl border border-[#002454]/5">
+                <div>
+                  <span className="text-[11px] font-bold text-[#002454]/50 uppercase tracking-wider block">Student ID</span>
+                  <span className="font-semibold text-[#002454]">{selectedCandidate.student_id || "N/A"}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-[#002454]/50 uppercase tracking-wider block">Phone Number</span>
+                  <span className="font-semibold text-[#002454]">{selectedCandidate.contact_number || "N/A"}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-[11px] font-bold text-[#002454]/50 uppercase tracking-wider block">Faculty</span>
+                  <span className="font-semibold text-[#002454]">{selectedCandidate.faculty || "N/A"}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-[11px] font-bold text-[#002454]/50 uppercase tracking-wider block">Department</span>
+                  <span className="font-semibold text-[#002454]">{selectedCandidate.department || "N/A"}</span>
+                </div>
+              </div>
+
+              {/* Preferences */}
+              <div>
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#002454]/60 mb-2">Company Preferences</h4>
+                {[
+                  selectedCandidate.pref_1_name,
+                  selectedCandidate.pref_2_name,
+                  selectedCandidate.pref_3_name,
+                  selectedCandidate.pref_4_name,
+                ].filter(Boolean).length > 0 ? (
+                  <ol className="list-decimal list-inside space-y-1 text-xs font-semibold text-[#002454] bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    {selectedCandidate.pref_1_name && <li>{selectedCandidate.pref_1_name}</li>}
+                    {selectedCandidate.pref_2_name && <li>{selectedCandidate.pref_2_name}</li>}
+                    {selectedCandidate.pref_3_name && <li>{selectedCandidate.pref_3_name}</li>}
+                    {selectedCandidate.pref_4_name && <li>{selectedCandidate.pref_4_name}</li>}
+                  </ol>
+                ) : (
+                  <p className="text-xs text-[#002454]/50 italic bg-slate-50 p-2.5 rounded-xl border border-slate-100">No company preferences selected</p>
+                )}
+              </div>
+
+              {/* Comment */}
+              {selectedCandidate.application_comment && (
+                <div>
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#002454]/60 mb-1">Comment</h4>
+                  <p className="text-xs text-slate-700 bg-amber-50/70 border border-amber-200/50 p-3 rounded-xl italic">
+                    "{selectedCandidate.application_comment}"
+                  </p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="pt-2 border-t border-[#002454]/10 flex items-center justify-between">
+                {selectedCandidate.cv_url ? (
+                  <a
+                    href={`/api/v1/candidate/cv/${selectedCandidate.candidate_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#1688b2] hover:bg-[#002454] text-white px-4 py-2.5 text-xs font-bold transition-all shadow-sm"
+                  >
+                    <FileText size={15} /> View Candidate CV
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-400 font-semibold italic">No CV uploaded</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCandidate(null)}
+                  className="rounded-xl border border-[#002454]/15 px-4 py-2.5 text-xs font-bold text-[#002454] hover:bg-slate-50 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

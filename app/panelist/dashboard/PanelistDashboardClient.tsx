@@ -222,7 +222,7 @@ export default function PanelistDashboardClient({
                       <td className="py-4 px-4 text-center">
                         {slot.cv_url ? (
                           <a
-                            href={slot.cv_url}
+                            href={`/api/v1/candidate/cv/${slot.candidate_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex p-2 rounded-xl bg-[#33aeda]/10 hover:bg-[#33aeda]/20 text-[#1688b2] transition-colors"

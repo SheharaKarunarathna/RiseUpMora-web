@@ -155,7 +155,7 @@ export default function EvaluationClient({
 
         {candidate.cv_url ? (
           <a
-            href={candidate.cv_url}
+            href={`/api/v1/candidate/cv/${candidate.candidate_id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 rounded-xl border border-[#33aeda]/20 bg-[#33aeda]/5 hover:bg-[#33aeda]/10 px-4 py-2.5 text-xs font-bold text-[#1688b2] transition-all"

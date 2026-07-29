@@ -38,6 +38,8 @@ type UploadSignature = {
   folder: string;
   public_id: string;
   timestamp: number;
+  type?: string;
+  access_mode?: string;
   overwrite: boolean;
   invalidate: boolean;
   expectedPublicId: string;
@@ -213,6 +215,8 @@ export default function CandidateApplicationPage() {
       cloudinaryForm.set("signature", signatureData.signature);
       cloudinaryForm.set("folder", signatureData.folder);
       cloudinaryForm.set("public_id", signatureData.public_id);
+      if (signatureData.type) cloudinaryForm.set("type", signatureData.type);
+      if (signatureData.access_mode) cloudinaryForm.set("access_mode", signatureData.access_mode);
       cloudinaryForm.set("overwrite", String(signatureData.overwrite));
       cloudinaryForm.set("invalidate", String(signatureData.invalidate));
 
