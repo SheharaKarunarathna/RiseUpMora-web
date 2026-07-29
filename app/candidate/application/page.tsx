@@ -222,7 +222,7 @@ export default function CandidateApplicationPage() {
     setError("");
     setSuccess(false);
 
-    if (!file) {
+    if (!file && !candidate?.cvUrl) {
       setError("Select your CV in PDF format before submitting.");
       return;
     }
@@ -233,47 +233,55 @@ export default function CandidateApplicationPage() {
     }
 
     setIsSubmitting(true);
-    setSubmissionStage("Preparing secure upload");
 
     try {
-      const signatureResponse = await fetch(
-        "/api/v1/candidate/application/upload-signature",
-        { method: "POST" },
-      );
-      const signatureData = (await signatureResponse.json()) as
-        | UploadSignature
-        | { error?: string };
-      if (!signatureResponse.ok || !("signature" in signatureData)) {
-        throw new Error(
-          "error" in signatureData && signatureData.error
-            ? signatureData.error
-            : "Unable to prepare the CV upload",
+      let uploadedCvUrl = candidate?.cvUrl || "";
+      let uploadedPublicId = "";
+
+      if (file) {
+        setSubmissionStage("Preparing secure upload");
+        const signatureResponse = await fetch(
+          "/api/v1/candidate/application/upload-signature",
+          { method: "POST" },
         );
-      }
+        const signatureData = (await signatureResponse.json()) as
+          | UploadSignature
+          | { error?: string };
+        if (!signatureResponse.ok || !("signature" in signatureData)) {
+          throw new Error(
+            "error" in signatureData && signatureData.error
+              ? signatureData.error
+              : "Unable to prepare the CV upload",
+          );
+        }
 
-      setSubmissionStage("Uploading CV...");
-      const cloudinaryForm = new FormData();
-      cloudinaryForm.set("file", file);
-      cloudinaryForm.set("api_key", signatureData.apiKey);
-      cloudinaryForm.set("timestamp", String(signatureData.timestamp));
-      cloudinaryForm.set("signature", signatureData.signature);
-      cloudinaryForm.set("folder", signatureData.folder);
-      cloudinaryForm.set("public_id", signatureData.public_id);
-      if (signatureData.type) cloudinaryForm.set("type", signatureData.type);
-      if (signatureData.access_mode) cloudinaryForm.set("access_mode", signatureData.access_mode);
-      cloudinaryForm.set("overwrite", String(signatureData.overwrite));
-      cloudinaryForm.set("invalidate", String(signatureData.invalidate));
+        setSubmissionStage("Uploading CV...");
+        const cloudinaryForm = new FormData();
+        cloudinaryForm.set("file", file);
+        cloudinaryForm.set("api_key", signatureData.apiKey);
+        cloudinaryForm.set("timestamp", String(signatureData.timestamp));
+        cloudinaryForm.set("signature", signatureData.signature);
+        cloudinaryForm.set("folder", signatureData.folder);
+        cloudinaryForm.set("public_id", signatureData.public_id);
+        if (signatureData.type) cloudinaryForm.set("type", signatureData.type);
+        if (signatureData.access_mode) cloudinaryForm.set("access_mode", signatureData.access_mode);
+        cloudinaryForm.set("overwrite", String(signatureData.overwrite));
+        cloudinaryForm.set("invalidate", String(signatureData.invalidate));
 
-      const uploadResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/raw/upload`,
-        { method: "POST", body: cloudinaryForm },
-      );
-      const uploadData = (await uploadResponse.json()) as CloudinaryUpload;
-      if (!uploadResponse.ok || !uploadData.secure_url || !uploadData.public_id) {
-        throw new Error(uploadData.error?.message || "Cloudinary rejected the CV upload");
-      }
-      if (uploadData.public_id !== signatureData.expectedPublicId) {
-        throw new Error("Cloudinary returned an unexpected CV path");
+        const uploadResponse = await fetch(
+          `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/raw/upload`,
+          { method: "POST", body: cloudinaryForm },
+        );
+        const uploadData = (await uploadResponse.json()) as CloudinaryUpload;
+        if (!uploadResponse.ok || !uploadData.secure_url || !uploadData.public_id) {
+          throw new Error(uploadData.error?.message || "Cloudinary rejected the CV upload");
+        }
+        if (uploadData.public_id !== signatureData.expectedPublicId) {
+          throw new Error("Cloudinary returned an unexpected CV path");
+        }
+
+        uploadedCvUrl = uploadData.secure_url;
+        uploadedPublicId = uploadData.public_id;
       }
 
       setSubmissionStage("Saving application");
@@ -281,14 +289,15 @@ export default function CandidateApplicationPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          cvUrl: uploadData.secure_url,
-          publicId: uploadData.public_id,
+          cvUrl: uploadedCvUrl,
+          publicId: uploadedPublicId,
           preferences,
           comment,
         }),
       });
       const data = (await response.json()) as {
         success?: boolean;
+        candidate?: CandidateApplication;
         error?: string;
       };
 
@@ -297,6 +306,12 @@ export default function CandidateApplicationPage() {
         return;
       }
 
+      if (data.candidate) {
+        setCandidate(data.candidate);
+      } else if (uploadedCvUrl) {
+        setCandidate((prev) => (prev ? { ...prev, cvUrl: uploadedCvUrl } : null));
+      }
+      setFile(null);
       setSuccess(true);
     } catch (submissionError: unknown) {
       setError(
@@ -414,7 +429,7 @@ export default function CandidateApplicationPage() {
                   ].map(([label, value]) => (
                     <label key={label}>
                       <span>{label}</span>
-                      <input type="text" value={value} readOnly />
+                      <input type="text" value={value ?? ""} readOnly />
                     </label>
                   ))}
                 </div>

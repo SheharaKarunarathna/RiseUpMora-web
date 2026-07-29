@@ -176,7 +176,7 @@ export async function POST(request: Request) {
   }
 
   const candidateResult = await query(
-    `SELECT id, student_id, faculty, department
+    `SELECT id, student_id, faculty, department, cv_url
      FROM candidates
      WHERE user_id = $1`,
     [session.user.id],
@@ -188,75 +188,96 @@ export async function POST(request: Request) {
     );
   }
 
-  if (
-    !process.env.CLOUDINARY_CLOUD_NAME ||
-    !process.env.CLOUDINARY_API_KEY ||
-    !process.env.CLOUDINARY_API_SECRET
-  ) {
-    return NextResponse.json(
-      { error: "CV upload is not available until Cloudinary is configured" },
-      { status: 503 },
-    );
-  }
-
   const candidate = candidateResult.rows[0] as {
     student_id: string;
     faculty: string;
     department: string;
+    cv_url: string | null;
   };
-  const expectedAsset = getCandidateCvAsset({
-    studentId: candidate.student_id,
-    faculty: candidate.faculty,
-    department: candidate.department,
-  });
 
-  if (publicId !== expectedAsset.fullPublicId) {
+  let savedCvUrl = candidate.cv_url;
+
+  if (publicId) {
+    if (
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET
+    ) {
+      return NextResponse.json(
+        { error: "CV upload is not available until Cloudinary is configured" },
+        { status: 503 },
+      );
+    }
+
+    const expectedAsset = getCandidateCvAsset({
+      studentId: candidate.student_id,
+      faculty: candidate.faculty,
+      department: candidate.department,
+    });
+
+    if (publicId !== expectedAsset.fullPublicId) {
+      return NextResponse.json(
+        { error: "The uploaded CV path does not match your candidate profile" },
+        { status: 400 },
+      );
+    }
+
+    try {
+      let uploadedAsset: any;
+      try {
+        uploadedAsset = await cloudinary.api.resource(expectedAsset.fullPublicId, {
+          resource_type: "raw",
+          type: "authenticated",
+        });
+      } catch {
+        try {
+          uploadedAsset = await cloudinary.api.resource(expectedAsset.fullPublicId, {
+            resource_type: "raw",
+            type: "upload",
+          });
+        } catch (resourceErr) {
+          console.error("Cloudinary resource fetch error:", resourceErr);
+          return NextResponse.json(
+            { error: "The uploaded CV could not be found on Cloudinary. Please re-upload your PDF." },
+            { status: 400 },
+          );
+        }
+      }
+
+      if (
+        !uploadedAsset ||
+        uploadedAsset.bytes > maximumFileSize ||
+        !uploadedAsset.public_id.toLowerCase().endsWith(".pdf")
+      ) {
+        console.error("Cloudinary asset verification failed:", {
+          bytes: uploadedAsset?.bytes,
+          public_id: uploadedAsset?.public_id,
+          expected: expectedAsset.fullPublicId,
+        });
+        return NextResponse.json(
+          { error: "Cloudinary could not verify the uploaded PDF" },
+          { status: 400 },
+        );
+      }
+
+      savedCvUrl = uploadedAsset.secure_url || cvUrl || candidate.cv_url;
+    } catch (error: unknown) {
+      console.error("Candidate application submission error:", error);
+      return NextResponse.json(
+        { error: "Unable to verify your CV file. Please try again." },
+        { status: 500 },
+      );
+    }
+  }
+
+  if (!savedCvUrl) {
     return NextResponse.json(
-      { error: "The uploaded CV path does not match your candidate profile" },
+      { error: "Select your CV in PDF format before submitting." },
       { status: 400 },
     );
   }
 
   try {
-    let uploadedAsset: any;
-    try {
-      uploadedAsset = await cloudinary.api.resource(expectedAsset.fullPublicId, {
-        resource_type: "raw",
-        type: "authenticated",
-      });
-    } catch {
-      try {
-        uploadedAsset = await cloudinary.api.resource(expectedAsset.fullPublicId, {
-          resource_type: "raw",
-          type: "upload",
-        });
-      } catch (resourceErr) {
-        console.error("Cloudinary resource fetch error:", resourceErr);
-        return NextResponse.json(
-          { error: "The uploaded CV could not be found on Cloudinary. Please re-upload your PDF." },
-          { status: 400 },
-        );
-      }
-    }
-
-    if (
-      !uploadedAsset ||
-      uploadedAsset.bytes > maximumFileSize ||
-      !uploadedAsset.public_id.toLowerCase().endsWith(".pdf")
-    ) {
-      console.error("Cloudinary asset verification failed:", {
-        bytes: uploadedAsset?.bytes,
-        public_id: uploadedAsset?.public_id,
-        expected: expectedAsset.fullPublicId,
-      });
-      return NextResponse.json(
-        { error: "Cloudinary could not verify the uploaded PDF" },
-        { status: 400 },
-      );
-    }
-
-    const savedCvUrl = uploadedAsset.secure_url || cvUrl;
-
     await query(
       `UPDATE candidates
        SET cv_url = $1,
@@ -279,7 +300,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Your application has been submitted successfully",
+      message: "Your application has been updated successfully",
+      candidate: {
+        cvUrl: savedCvUrl,
+      },
     });
   } catch (error: unknown) {
     console.error("Candidate application submission error:", error);
