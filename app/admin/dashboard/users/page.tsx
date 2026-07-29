@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Loader2, Plus, Mail, Building2, BookOpen, ChevronDown, Trash2, Search, X, SlidersHorizontal, User, FileText, ListOrdered, Phone, GraduationCap, Eye } from "lucide-react";
 
 type RoleType = "candidate" | "company_coordinator" | "department_coordinator" | "panelist";
