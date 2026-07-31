@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, Plus, Mail, Building2, BookOpen, ChevronDown, Trash2, Search, X, SlidersHorizontal, User, FileText, ListOrdered, Phone, GraduationCap, Eye } from "lucide-react";
+import { departmentsByFaculty } from "@/lib/candidate-options";
 
 type RoleType = "candidate" | "company_coordinator" | "department_coordinator" | "panelist";
 
@@ -49,47 +50,10 @@ export default function UserManagementPage() {
     { id: "panelist", label: "Panelists", icon: Building2 },
   ];
 
-  const departments = [
-    {
-      group: "Faculty of Engineering",
-      options: [
-        "Department of Chemical & Process Engineering",
-        "Department of Civil Engineering",
-        "Department of Computer Science & Engineering",
-        "Department of Earth Resources Engineering",
-        "Department of Electrical Engineering",
-        "Department of Electronic & Telecommunication Engineering",
-        "Department of Materials Science & Engineering",
-        "Department of Mechanical Engineering",
-        "Department of Textile & Apparel Engineering",
-        "Department of Transport Management and Logistics Engineering",
-      ],
-    },
-    {
-      group: "Faculty of Information Technology",
-      options: [
-        "Department of Information Technology",
-      ],
-    },
-    {
-      group: "Faculty of Business",
-      options: [
-        "Department of Decision Sciences",
-        "Department of Industrial Management",
-        "Department of Management of Technology",
-      ],
-    },
-    {
-      group: "Faculty of Architecture",
-      options: [
-        "Department of Architecture",
-        "Department of Building Economics",
-        "Department of Town & Country Planning",
-        "Department of Integrated Design",
-        "Department of Facilities Management",
-      ],
-    },
-  ];
+  const departments = Object.entries(departmentsByFaculty).map(([group, options]) => ({
+    group,
+    options: [...options],
+  }));
 
   useEffect(() => {
     fetchUsers(activeTab);
