@@ -1770,6 +1770,157 @@ html {
   transform: translateY(-2px);
 }
 
+/* ── Sponsors Showcase ── */
+
+.sponsors-showcase {
+  position: relative;
+  width: min(100% - 3rem, 76rem);
+  margin: 0 auto 6rem;
+}
+
+.sponsors-showcase__intro {
+  max-width: 42rem;
+  margin-bottom: clamp(2rem, 4vw, 3.5rem);
+}
+
+.sponsors-showcase__intro p {
+  margin: 0 0 -0.75rem;
+  color: #bf8500;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.sponsors-showcase__intro h2 {
+  margin: 1rem 0 0.75rem;
+  color: #002454;
+  font-size: clamp(2.2rem, 4.5vw, 3.8rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+.sponsors-showcase__intro span {
+  display: block;
+  color: rgb(0 36 84 / 60%);
+  font-size: clamp(0.95rem, 1.4vw, 1.06rem);
+  line-height: 1.75;
+}
+
+.sponsors-showcase__tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* ── Tier row ── */
+
+.sponsors-tier {
+  position: relative;
+  border: 1px solid rgb(0 36 84 / 7%);
+  border-radius: 1.25rem;
+  padding: clamp(1.25rem, 2vw, 2rem);
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 96%), rgb(248 252 254 / 94%)),
+    #ffffff;
+  box-shadow: 0 1rem 3rem rgb(0 36 84 / 5%);
+}
+
+.sponsors-tier::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0.3rem;
+  height: 100%;
+  content: "";
+}
+
+.sponsors-tier--platinum::before { background: linear-gradient(180deg, #f6c430, #e6a817); }
+.sponsors-tier--affiliated::before { background: linear-gradient(180deg, #33aeda, #1688b2); }
+.sponsors-tier--ecosystem::before { background: linear-gradient(180deg, #22c55e, #16a34a); }
+.sponsors-tier--knowledge::before { background: linear-gradient(180deg, #8b5cf6, #7c3aed); }
+.sponsors-tier--bronze::before { background: linear-gradient(180deg, #e67300, #cc6600); }
+.sponsors-tier--stall::before { background: linear-gradient(180deg, #0ea5e9, #0284c7); }
+
+.sponsors-tier__label {
+  margin-bottom: clamp(0.75rem, 1.5vw, 1.25rem);
+  padding-left: 0.5rem;
+  color: rgb(0 36 84 / 50%);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.sponsors-tier__logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.75rem, 2vw, 1.5rem);
+  padding: 0.5rem;
+}
+
+.sponsors-tier__logos--featured {
+  justify-content: center;
+  padding: 1rem 0.5rem;
+}
+
+/* ── Logo card ── */
+
+.sponsor-logo {
+  display: grid;
+  width: clamp(7rem, 12vw, 10rem);
+  height: clamp(4.5rem, 7vw, 6rem);
+  border: 1px solid rgb(0 36 84 / 6%);
+  border-radius: 0.85rem;
+  place-items: center;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 80%), rgb(248 252 255 / 60%));
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0.5rem 1.5rem rgb(0 36 84 / 4%);
+  transition:
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 240ms ease;
+}
+
+.sponsor-logo:hover {
+  border-color: rgb(0 36 84 / 14%);
+  box-shadow: 0 1rem 2.5rem rgb(0 36 84 / 10%);
+  transform: translateY(-4px) scale(1.03);
+}
+
+.sponsor-logo--platinum {
+  width: clamp(10rem, 16vw, 14rem);
+  height: clamp(5.5rem, 8vw, 7rem);
+  border-color: rgb(246 196 48 / 22%);
+  background:
+    radial-gradient(ellipse at 50% 30%, rgb(246 196 48 / 10%), transparent 70%),
+    linear-gradient(135deg, rgb(255 255 255 / 92%), rgb(255 252 237 / 80%));
+  box-shadow: 0 0.8rem 2.5rem rgb(246 196 48 / 12%);
+}
+
+.sponsor-logo--platinum:hover {
+  border-color: rgb(246 196 48 / 40%);
+  box-shadow: 0 1.2rem 3rem rgb(246 196 48 / 22%);
+}
+
+.sponsor-logo img {
+  display: block;
+  max-width: 78%;
+  max-height: 72%;
+  object-fit: contain;
+  filter: grayscale(0.15);
+  transition: filter 320ms ease;
+}
+
+.sponsor-logo:hover img {
+  filter: grayscale(0);
+}
+
 .gallery-section {
   width: min(100% - 3rem, 84rem);
   margin: 0 auto 6rem;
@@ -3751,6 +3902,16 @@ html {
   .partner-tier-card {
     grid-column: 1 / -1 !important;
     min-height: auto;
+  }
+
+  .sponsor-logo {
+    width: clamp(6rem, 20vw, 9rem);
+    height: clamp(4rem, 12vw, 5.5rem);
+  }
+
+  .sponsor-logo--platinum {
+    width: clamp(8rem, 28vw, 12rem);
+    height: clamp(5rem, 14vw, 6.5rem);
   }
 
   .gallery-heading {

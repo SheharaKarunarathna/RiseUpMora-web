@@ -128,7 +128,7 @@ const footerQuickLinks = [
   { label: "Home", href: "#home" },
   { label: "About Us", href: "#about" },
   { label: "Timeline", href: "#timeline" },
-  { label: "Partners", href: "#partner" },
+  { label: "Partners", href: "#sponsors" },
   { label: "Gallery", href: "#gallery" },
   { label: "Contact", href: "#contact" },
 ] as const;
@@ -257,6 +257,7 @@ export default function Home() {
 
         <EventTimeline />
 
+        {/* Old partnership tier cards – commented out, replaced by sponsors showcase below
         <section className="partner-tiers" id="partner">
           <div className="partner-tiers__intro">
             <p>Partner with us</p>
@@ -287,6 +288,140 @@ export default function Home() {
                 </a>
               </article>
             ))}
+          </div>
+        </section>
+        */}
+
+        <section className="sponsors-showcase" id="sponsors">
+          <div className="sponsors-showcase__intro">
+            <p>Our Partners</p>
+            <h2>Trusted By Industry Leaders</h2>
+            <span>
+              Rise Up Mora 2026 is proudly supported by leading organizations
+              across Sri Lanka, empowering the next generation of professionals.
+            </span>
+          </div>
+
+          <div className="sponsors-showcase__tiers">
+            <div className="sponsors-tier sponsors-tier--platinum">
+              <div className="sponsors-tier__label">Platinum Partner</div>
+              <div className="sponsors-tier__logos sponsors-tier__logos--featured">
+                <div className="sponsor-logo sponsor-logo--platinum">
+                  <img
+                    src="/assets/company-logos/platinum/variosystems.png"
+                    alt="Platinum partner logo"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="sponsors-tier sponsors-tier--affiliated">
+              <div className="sponsors-tier__label">Affiliated Partners</div>
+              <div className="sponsors-tier__logos">
+                <div className="sponsor-logo">
+                  <img
+                    src="/assets/company-logos/affiliated/Hemas.png"
+                    alt="Affiliated partner logo"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="sponsor-logo">
+                  <img
+                    src="/assets/company-logos/affiliated/IPD.png"
+                    alt="Affiliated partner logo"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="sponsor-logo">
+                  <img
+                    src="/assets/company-logos/affiliated/rma-logo.png"
+                    alt="Affiliated partner logo"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="sponsors-tier sponsors-tier--ecosystem">
+              <div className="sponsors-tier__label">Eco System Partners</div>
+              <div className="sponsors-tier__logos">
+                <div className="sponsor-logo">
+                  <img
+                    src="/assets/company-logos/ecosystem/Studpro.png"
+                    alt="Eco system partner logo"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="sponsor-logo">
+                  <img
+                    src="/assets/company-logos/ecosystem/ypsl.png"
+                    alt="Eco system partner logo"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="sponsors-tier sponsors-tier--knowledge">
+              <div className="sponsors-tier__label">Knowledge Partner</div>
+              <div className="sponsors-tier__logos">
+                <div className="sponsor-logo">
+                  <img
+                    src="/assets/company-logos/knowledge/acentura-logo-blue.png"
+                    alt="Knowledge partner logo"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="sponsors-tier sponsors-tier--bronze">
+              <div className="sponsors-tier__label">Bronze Partner</div>
+              <div className="sponsors-tier__logos">
+                <div className="sponsor-logo">
+                  <img
+                    src="/assets/company-logos/bronze/thermography-lk.png"
+                    alt="Bronze partner logo"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="sponsors-tier sponsors-tier--stall">
+              <div className="sponsors-tier__label">Stall Partners</div>
+              <div className="sponsors-tier__logos">
+                <div className="sponsor-logo">
+                  <img
+                    src="/assets/company-logos/stall/CTC.png"
+                    alt="Stall partner logo"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="sponsor-logo">
+                  <img
+                    src="/assets/company-logos/stall/creative-software.png"
+                    alt="Stall partner logo"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="sponsor-logo">
+                  <img
+                    src="/assets/company-logos/stall/idea8.png"
+                    alt="Stall partner logo"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="sponsor-logo">
+                  <img
+                    src="/assets/company-logos/stall/pelwatte-dairy.png"
+                    alt="Stall partner logo"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 

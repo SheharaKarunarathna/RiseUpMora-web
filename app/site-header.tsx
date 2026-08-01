@@ -12,7 +12,7 @@ const navigation = [
   { label: "Home", href: "#home" },
   { label: "About", href: "#about" },
   { label: "Timeline", href: "#timeline" },
-  { label: "Partner", href: "#partner" },
+  { label: "Partner", href: "#sponsors" },
   { label: "Gallery", href: "#gallery" },
   { label: "Contact", href: "#contact" },
 ];
