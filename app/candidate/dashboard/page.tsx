@@ -186,7 +186,7 @@ export default function CandidateDashboardPage() {
 
     const trimmed = value.trim();
     if (!trimmed) return; // empty is fine
-    
+
     // Don't check uniqueness if format is clearly wrong
     if (field === "phone" && trimmed.length !== 10) return;
     if (field === "studentId" && !/^\d{6}[A-Z]$/.test(trimmed)) return;
@@ -264,7 +264,7 @@ export default function CandidateDashboardPage() {
       if (field === "name") { setSavedName(value); setCandidate((p) => p ? { ...p, name: value } : p); }
       if (field === "phone") { setSavedPhone(value); setCandidate((p) => p ? { ...p, phone: value } : p); }
       if (field === "studentId") { setSavedStudentId(value); setCandidate((p) => p ? { ...p, studentId: value } : p); }
-      
+
       if (field === "faculty" || field === "department") {
         const facVal = field === "faculty" ? value : (editingFields.has("faculty") ? editFaculty : savedFaculty);
         const depVal = field === "department" ? value : (editingFields.has("department") ? editDepartment : savedDepartment);
@@ -403,7 +403,7 @@ export default function CandidateDashboardPage() {
               ref={inputRef}
               value={isEditing ? value : (
                 field === "faculty" ? savedFaculty :
-                savedDepartment
+                  savedDepartment
               )}
               onChange={handleChange}
               disabled={!isEditing || isSavingThis || isSaving}
@@ -428,10 +428,10 @@ export default function CandidateDashboardPage() {
               type={inputType}
               value={isEditing ? value : (
                 field === "name" ? savedName :
-                field === "phone" ? savedPhone :
-                field === "studentId" ? savedStudentId :
-                field === "faculty" ? savedFaculty :
-                savedDepartment
+                  field === "phone" ? savedPhone :
+                    field === "studentId" ? savedStudentId :
+                      field === "faculty" ? savedFaculty :
+                        savedDepartment
               )}
               onChange={handleChange}
               readOnly={!isEditing}
