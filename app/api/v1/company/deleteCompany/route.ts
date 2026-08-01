@@ -23,6 +23,11 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
+    await query("UPDATE candidates SET pref_1 = NULL WHERE pref_1 = $1", [id]);
+    await query("UPDATE candidates SET pref_2 = NULL WHERE pref_2 = $1", [id]);
+    await query("UPDATE candidates SET pref_3 = NULL WHERE pref_3 = $1", [id]);
+    await query("UPDATE candidates SET pref_4 = NULL WHERE pref_4 = $1", [id]);
+
     return NextResponse.json({ success: true, deletedCompany: res.rows[0] });
   } catch (error: any) {
     console.error("Error deleting company:", error);

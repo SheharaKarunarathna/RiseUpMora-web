@@ -80,6 +80,12 @@ export default function SignInModal({ isOpen, onClose }: SignInModalProps) {
         router.refresh();
         return;
       }
+      if (session?.user?.role === "department_coordinator") {
+        closeModal();
+        router.push("/department-coordinator/dashboard");
+        router.refresh();
+        return;
+      }
       if (session?.user?.role === "panelist") {
         closeModal();
         router.push("/panelist/dashboard");

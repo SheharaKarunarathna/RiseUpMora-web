@@ -101,6 +101,21 @@ export async function GET(
           isAuthorized = true;
         }
       }
+    } else if (role === "department_coordinator") {
+      const dcRes = await query(
+        "SELECT department FROM department_coordinators WHERE user_id = $1",
+        [userId]
+      );
+      if (dcRes.rowCount && dcRes.rowCount > 0) {
+        const dept = dcRes.rows[0].department;
+        const authCheck = await query(
+          "SELECT 1 FROM candidates WHERE id = $1 AND department = $2",
+          [candidate.id, dept]
+        );
+        if ((authCheck.rowCount ?? 0) > 0) {
+          isAuthorized = true;
+        }
+      }
     }
 
     if (!isAuthorized) {

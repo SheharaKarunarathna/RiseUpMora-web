@@ -47,6 +47,7 @@ const providers: NextAuthOptions["providers"] = [
           if (
             (user.role !== "candidate" &&
               user.role !== "company_coordinator" &&
+              user.role !== "department_coordinator" &&
               user.role !== "panelist") ||
             !user.email_verified_at
           ) {
