@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Plus, Mail, Building2, BookOpen, ChevronDown, Trash2, Search, X, SlidersHorizontal, User, FileText, ListOrdered, Phone, GraduationCap, Eye } from "lucide-react";
+import { Loader2, Plus, Mail, Building2, BookOpen, ChevronDown, Trash2, Search, X, SlidersHorizontal, User, Users, FileText, ListOrdered, Phone, GraduationCap, Eye } from "lucide-react";
 import { departmentsByFaculty } from "@/lib/candidate-options";
 
 type RoleType = "candidate" | "company_coordinator" | "department_coordinator" | "panelist";
@@ -334,6 +334,14 @@ export default function UserManagementPage() {
               <option value="none">No Time Slot Selected</option>
             </select>
             <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
+          </div>
+
+          {/* Listed Candidates Count Badge */}
+          <div className="inline-flex items-center gap-1.5 rounded-xl bg-[#1688b2]/10 border border-[#1688b2]/20 px-3.5 py-2.5 text-xs font-bold text-[#1688b2] shrink-0">
+            <Users size={14} />
+            {hasActiveFilters
+              ? `Listed: ${filteredUsers.length} of ${users.length}`
+              : `Listed: ${users.length} candidates`}
           </div>
 
           {/* Clear all filters */}

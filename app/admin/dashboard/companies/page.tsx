@@ -509,92 +509,117 @@ export default function CompaniesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#002454]/40 p-4 backdrop-blur-sm">
           <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#002454]/10 bg-[#f8fcfe] px-6 py-5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#002454]/10 bg-white">
-                  {viewingCompanyCandidates.logo_url ? (
-                    <img src={viewingCompanyCandidates.logo_url} alt={viewingCompanyCandidates.name} className="h-full w-full object-contain p-1" />
-                  ) : (
-                    <Building2 size={20} className="text-[#002454]/40" />
-                  )}
-                </div>
-                <div>
-                  <h2 className="text-xl font-extrabold text-[#002454]">{viewingCompanyCandidates.name}</h2>
-                  <p className="text-xs text-[#002454]/60">
-                    Candidates who chose this company ({companyCandidates.length} total)
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewingCompanyCandidates(null)}
-                className="rounded-full p-2 text-[#002454]/50 hover:bg-[#002454]/10 hover:text-[#002454]"
-              >
-                <X size={20} />
-              </button>
-            </div>
+            {(() => {
+              const filteredCandCount = companyCandidates.filter((c) => {
+                const q = candSearch.toLowerCase().trim();
+                const matchesSearch = !q || c.candidate_name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q) || c.student_id?.toLowerCase().includes(q);
+                const matchesPref = !candPrefFilter || String(c.preference_number) === candPrefFilter;
+                const matchesSlot = !candSlotFilter || (candSlotFilter === "none" ? !c.slot_number : String(c.slot_number) === candSlotFilter);
+                return matchesSearch && matchesPref && matchesSlot;
+              }).length;
+              const isFiltered = !!(candSearch || candPrefFilter || candSlotFilter);
 
-            {/* Modal Search & Filters Bar */}
-            <div className="flex flex-wrap items-center gap-3 border-b border-[#002454]/10 bg-white p-4">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search name, email, student ID…"
-                  value={candSearch}
-                  onChange={(e) => setCandSearch(e.target.value)}
-                  className="w-full rounded-xl border border-[#002454]/10 bg-white py-2 pl-9 pr-8 text-xs text-[#002454] outline-none focus:border-[#33aeda]"
-                />
-                {candSearch && (
-                  <button type="button" onClick={() => setCandSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#002454]/40">
-                    <X size={13} />
-                  </button>
-                )}
-              </div>
+              return (
+                <>
+                  <div className="flex items-center justify-between border-b border-[#002454]/10 bg-[#f8fcfe] px-6 py-5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#002454]/10 bg-white">
+                        {viewingCompanyCandidates.logo_url ? (
+                          <img src={viewingCompanyCandidates.logo_url} alt={viewingCompanyCandidates.name} className="h-full w-full object-contain p-1" />
+                        ) : (
+                          <Building2 size={20} className="text-[#002454]/40" />
+                        )}
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-extrabold text-[#002454]">{viewingCompanyCandidates.name}</h2>
+                        <p className="text-xs font-semibold text-[#002454]/60">
+                          {isFiltered
+                            ? `Showing ${filteredCandCount} of ${companyCandidates.length} candidate(s) (filtered)`
+                            : `Candidates listed: ${companyCandidates.length}`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setViewingCompanyCandidates(null)}
+                      className="rounded-full p-2 text-[#002454]/50 hover:bg-[#002454]/10 hover:text-[#002454]"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
 
-              {/* Preference Rank Filter */}
-              <div className="relative">
-                <select
-                  value={candPrefFilter}
-                  onChange={(e) => setCandPrefFilter(e.target.value)}
-                  className="appearance-none rounded-xl border border-[#002454]/10 bg-white py-2 pl-3 pr-7 text-xs text-[#002454] outline-none focus:border-[#33aeda]"
-                >
-                  <option value="">All Preferences</option>
-                  <option value="1">Preference 1</option>
-                  <option value="2">Preference 2</option>
-                  <option value="3">Preference 3</option>
-                  <option value="4">Preference 4</option>
-                </select>
-                <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
-              </div>
+                  {/* Modal Search & Filters Bar */}
+                  <div className="flex flex-wrap items-center gap-3 border-b border-[#002454]/10 bg-white p-4">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Search name, email, student ID…"
+                        value={candSearch}
+                        onChange={(e) => setCandSearch(e.target.value)}
+                        className="w-full rounded-xl border border-[#002454]/10 bg-white py-2 pl-9 pr-8 text-xs text-[#002454] outline-none focus:border-[#33aeda]"
+                      />
+                      {candSearch && (
+                        <button type="button" onClick={() => setCandSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#002454]/40">
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
 
-              {/* Time Slot Filter */}
-              <div className="relative">
-                <select
-                  value={candSlotFilter}
-                  onChange={(e) => setCandSlotFilter(e.target.value)}
-                  className="appearance-none rounded-xl border border-[#002454]/10 bg-white py-2 pl-3 pr-7 text-xs text-[#002454] outline-none focus:border-[#33aeda]"
-                >
-                  <option value="">All Time Slots</option>
-                  <option value="1">Slot 1 (10:00 AM – 11:00 AM)</option>
-                  <option value="2">Slot 2 (11:00 AM – 12:00 PM)</option>
-                  <option value="3">Slot 3 (1:30 PM – 2:30 PM)</option>
-                  <option value="4">Slot 4 (2:30 PM – 3:30 PM)</option>
-                  <option value="none">No Time Slot Selected</option>
-                </select>
-                <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
-              </div>
+                    {/* Preference Rank Filter */}
+                    <div className="relative">
+                      <select
+                        value={candPrefFilter}
+                        onChange={(e) => setCandPrefFilter(e.target.value)}
+                        className="appearance-none rounded-xl border border-[#002454]/10 bg-white py-2 pl-3 pr-7 text-xs text-[#002454] outline-none focus:border-[#33aeda]"
+                      >
+                        <option value="">All Preferences</option>
+                        <option value="1">Preference 1</option>
+                        <option value="2">Preference 2</option>
+                        <option value="3">Preference 3</option>
+                        <option value="4">Preference 4</option>
+                      </select>
+                      <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
+                    </div>
 
-              {(candSearch || candPrefFilter || candSlotFilter) && (
-                <button
-                  type="button"
-                  onClick={() => { setCandSearch(""); setCandPrefFilter(""); setCandSlotFilter(""); }}
-                  className="flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-bold text-red-500 hover:bg-red-100"
-                >
-                  <X size={12} /> Clear
-                </button>
-              )}
-            </div>
+                    {/* Time Slot Filter */}
+                    <div className="relative">
+                      <select
+                        value={candSlotFilter}
+                        onChange={(e) => setCandSlotFilter(e.target.value)}
+                        className="appearance-none rounded-xl border border-[#002454]/10 bg-white py-2 pl-3 pr-7 text-xs text-[#002454] outline-none focus:border-[#33aeda]"
+                      >
+                        <option value="">All Time Slots</option>
+                        <option value="1">Slot 1 (10:00 AM – 11:00 AM)</option>
+                        <option value="2">Slot 2 (11:00 AM – 12:00 PM)</option>
+                        <option value="3">Slot 3 (1:30 PM – 2:30 PM)</option>
+                        <option value="4">Slot 4 (2:30 PM – 3:30 PM)</option>
+                        <option value="none">No Time Slot Selected</option>
+                      </select>
+                      <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
+                    </div>
+
+                    {/* Listed Count Badge */}
+                    <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#1688b2]/10 border border-[#1688b2]/20 px-3 py-2 text-xs font-bold text-[#1688b2] shrink-0">
+                      <Users size={13} />
+                      {isFiltered
+                        ? `Listed: ${filteredCandCount} of ${companyCandidates.length}`
+                        : `Listed: ${companyCandidates.length}`}
+                    </span>
+
+                    {isFiltered && (
+                      <button
+                        type="button"
+                        onClick={() => { setCandSearch(""); setCandPrefFilter(""); setCandSlotFilter(""); }}
+                        className="flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-2.5 py-2 text-xs font-bold text-red-500 hover:bg-red-100 shrink-0"
+                      >
+                        <X size={12} /> Clear
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
 
             {/* Candidates Table */}
             <div className="flex-1 overflow-auto p-4">
