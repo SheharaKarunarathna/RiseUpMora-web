@@ -90,44 +90,7 @@ export default function CandidateApplicationPage() {
   const [slotCounts, setSlotCounts] = useState<Record<string, SlotInfo[]>>({});
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const [showNoticePopup, setShowNoticePopup] = useState(true);
-  const [isSendingNoticeEmail, setIsSendingNoticeEmail] = useState(false);
-  const [noticeEmailStatus, setNoticeEmailStatus] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
 
-  const handleSendNoticeEmail = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (isSendingNoticeEmail) return;
-    setIsSendingNoticeEmail(true);
-    setNoticeEmailStatus(null);
-
-    try {
-      const response = await fetch("/api/v1/candidate/send-cv-notice", {
-        method: "POST",
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        setNoticeEmailStatus({
-          type: "success",
-          message: data.message || "Email sent successfully! Check your inbox.",
-        });
-      } else {
-        setNoticeEmailStatus({
-          type: "error",
-          message: data.error || "Unable to send notice email. Please try again.",
-        });
-      }
-    } catch {
-      setNoticeEmailStatus({
-        type: "error",
-        message: "Connection error. Please try again.",
-      });
-    } finally {
-      setIsSendingNoticeEmail(false);
-    }
-  };
 
 
   useEffect(() => {
@@ -763,76 +726,7 @@ export default function CandidateApplicationPage() {
         )}
       </main>
 
-      {showNoticePopup && (
-        <div
-          className="cv-notice-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setShowNoticePopup(false);
-          }}
-        >
-          <section
-            className="cv-notice-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cv-notice-title"
-          >
-            <button
-              type="button"
-              className="cv-notice-close-btn"
-              onClick={() => setShowNoticePopup(false)}
-              aria-label="Close notice"
-            >
-              <X size={18} />
-            </button>
 
-            <div className="cv-notice-modal__content">
-              <div className="cv-notice-modal__icon" aria-hidden="true">
-                <Info size={30} />
-              </div>
-              <h2 id="cv-notice-title">Companies Will Be Available for Selection Soon!</h2>
-              <div className="cv-notice-text">
-                <p>
-                  Company selection will open soon. Once company preferences are open for selection, you will be notified via email and through our website. Please remember to check your spam or junk folder and mark our email address as &apos;not spam&apos; to ensure you receive our updates. Alternatively, you may check our website regularly.
-                </p>
-                <p style={{ marginTop: "0.75rem" }}>
-                  Click{" "}
-                  <button
-                    type="button"
-                    onClick={handleSendNoticeEmail}
-                    disabled={isSendingNoticeEmail}
-                    className="cv-notice-trigger-btn"
-                  >
-                    {isSendingNoticeEmail ? "sending email..." : "here"}
-                  </button>{" "}
-                  to check your inbox.
-                </p>
-              </div>
-
-              {noticeEmailStatus && (
-                <div
-                  className={`cv-notice-status cv-notice-status--${noticeEmailStatus.type}`}
-                  role="status"
-                >
-                  {noticeEmailStatus.type === "success" ? (
-                    <CheckCircle2 size={16} />
-                  ) : (
-                    <AlertCircle size={16} />
-                  )}
-                  <span>{noticeEmailStatus.message}</span>
-                </div>
-              )}
-
-              <button
-                type="button"
-                className="cv-notice-dismiss-btn"
-                onClick={() => setShowNoticePopup(false)}
-              >
-                Understood
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
 
       {success && (
         <div
