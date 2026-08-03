@@ -4,12 +4,19 @@ import { useState, useEffect } from "react";
 import { Building2, Plus, Pencil, Trash2, Loader2, Image as ImageIcon, Search, X, Users, ChevronDown, FileText, ExternalLink } from "lucide-react";
 import Image from "next/image";
 
+type SlotCountInfo = {
+  slot_number: number;
+  filled_count: number;
+  max_limit: number;
+};
+
 type Company = {
   id: string;
   name: string;
   logo_url: string | null;
   is_it: boolean;
   created_at: string;
+  slot_counts?: SlotCountInfo[];
 };
 
 export default function CompaniesPage() {
@@ -24,6 +31,8 @@ export default function CompaniesPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isIt, setIsIt] = useState(false);
+  const [slotLimits, setSlotLimits] = useState<{ [key: number]: number }>({ 1: 10, 2: 10, 3: 10, 4: 10 });
+  const [modalError, setModalError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Company candidates modal state
@@ -76,16 +85,25 @@ export default function CompaniesPage() {
   };
 
   const openModal = (company?: Company) => {
+    setModalError(null);
     if (company) {
       setEditingId(company.id);
       setName(company.name);
       setLogoPreview(company.logo_url);
       setIsIt(company.is_it);
+      const limits: { [key: number]: number } = { 1: 10, 2: 10, 3: 10, 4: 10 };
+      if (company.slot_counts) {
+        for (const sc of company.slot_counts) {
+          limits[sc.slot_number] = sc.max_limit ?? 10;
+        }
+      }
+      setSlotLimits(limits);
     } else {
       setEditingId(null);
       setName("");
       setLogoPreview(null);
       setIsIt(false);
+      setSlotLimits({ 1: 10, 2: 10, 3: 10, 4: 10 });
     }
     setLogoFile(null);
     setIsModalOpen(true);
@@ -99,8 +117,21 @@ export default function CompaniesPage() {
     }
   };
 
+  const editingCompany = companies.find((c) => c.id === editingId);
+  const hasSlotViolation = editingId !== null && [1, 2, 3, 4].some((sNum) => {
+    const filled = editingCompany?.slot_counts?.find((s) => s.slot_number === sNum)?.filled_count ?? 0;
+    return (slotLimits[sNum] ?? 10) < filled;
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setModalError(null);
+
+    if (hasSlotViolation) {
+      setModalError("There are already more candidates registered for this slot, please provide a higher limit");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -130,6 +161,7 @@ export default function CompaniesPage() {
         name,
         logo_url: finalLogoUrl,
         is_it: isIt,
+        slot_limits: slotLimits,
       };
 
       const url = editingId 
@@ -150,11 +182,11 @@ export default function CompaniesPage() {
         setIsModalOpen(false);
         fetchCompanies();
       } else {
-        alert(data.error || "Something went wrong");
+        setModalError(data.error || "Something went wrong");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Submission error:", error);
-      alert("Failed to submit");
+      setModalError(error?.message || "Failed to submit");
     } finally {
       setIsSubmitting(false);
     }
@@ -229,6 +261,7 @@ export default function CompaniesPage() {
             <tr>
               <th className="px-6 py-4 font-bold">Company</th>
               <th className="px-6 py-4 font-bold">Type</th>
+              <th className="px-6 py-4 font-bold">Slot Limits (Limit / Reg)</th>
               <th className="px-6 py-4 font-bold">Added On</th>
               <th className="px-6 py-4 font-bold text-right">Actions</th>
             </tr>
@@ -236,13 +269,13 @@ export default function CompaniesPage() {
           <tbody className="divide-y divide-[#002454]/5">
             {loading ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-[#002454]/50">
+                <td colSpan={5} className="px-6 py-8 text-center text-[#002454]/50">
                   <Loader2 className="mx-auto animate-spin" />
                 </td>
               </tr>
             ) : filteredCompanies.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-[#002454]/50">
+                <td colSpan={5} className="px-6 py-8 text-center text-[#002454]/50">
                   {searchQuery
                     ? `No companies match "${searchQuery}".`
                     : "No companies found. Add one to get started."}
@@ -277,6 +310,25 @@ export default function CompaniesPage() {
                     >
                       {company.is_it ? "IT / CS" : "Non-IT"}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-xs">
+                    <div className="flex flex-wrap gap-1.5">
+                      {[1, 2, 3, 4].map((sNum) => {
+                        const info = company.slot_counts?.find((s) => s.slot_number === sNum);
+                        const limit = info?.max_limit ?? 10;
+                        const filled = info?.filled_count ?? 0;
+                        return (
+                          <span
+                            key={sNum}
+                            className="inline-flex items-center gap-1 rounded-md border border-[#002454]/10 bg-[#f8fcfe] px-2 py-0.5 text-[11px] font-bold text-[#002454]"
+                            title={`Slot ${sNum}: ${filled} candidates registered / max limit ${limit}`}
+                          >
+                            S{sNum}: <span className="text-[#1688b2]">{limit}</span>
+                            <span className="text-[#002454]/40 font-normal">({filled})</span>
+                          </span>
+                        );
+                      })}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-[#002454]/70">
                     {new Date(company.created_at).toLocaleDateString()}
@@ -316,7 +368,7 @@ export default function CompaniesPage() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#002454]/20 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="mb-6 text-xl font-extrabold text-[#002454]">
               {editingId ? "Edit Company" : "Add Company"}
             </h2>
@@ -372,6 +424,65 @@ export default function CompaniesPage() {
                 </p>
               </div>
 
+              {/* Time Slot Limits (Capacity) Section */}
+              <div className="border-t border-[#002454]/10 pt-4">
+                <label className="mb-2 block text-sm font-bold text-[#002454]">
+                  Time Slot Limits (Capacity per Slot)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { slot: 1, label: "Slot 1 (10:00 - 11:00)" },
+                    { slot: 2, label: "Slot 2 (11:00 - 12:00)" },
+                    { slot: 3, label: "Slot 3 (1:30 - 2:30)" },
+                    { slot: 4, label: "Slot 4 (2:30 - 3:30)" },
+                  ].map(({ slot, label }) => {
+                    const currentFilled = editingCompany?.slot_counts?.find((s) => s.slot_number === slot)?.filled_count ?? 0;
+                    const currentLimit = slotLimits[slot] ?? 10;
+                    const isViolation = editingId !== null && currentLimit < currentFilled;
+
+                    return (
+                      <div key={slot} className="rounded-xl border border-[#002454]/10 bg-[#f8fcfe] p-3">
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-xs font-bold text-[#002454]">{label}</span>
+                          {editingId !== null && (
+                            <span className="text-[11px] font-semibold text-[#002454]/60">
+                              Registered: {currentFilled}
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          type="number"
+                          min={currentFilled || 1}
+                          value={currentLimit}
+                          onChange={(e) => {
+                            setModalError(null);
+                            const val = parseInt(e.target.value) || 0;
+                            setSlotLimits((prev) => ({ ...prev, [slot]: val }));
+                          }}
+                          className={`w-full rounded-lg border bg-white px-3 py-1.5 text-sm outline-none font-bold ${
+                            isViolation
+                              ? "border-red-500 text-red-600 focus:ring-2 focus:ring-red-200"
+                              : "border-[#002454]/10 text-[#002454] focus:border-[#33aeda]"
+                          }`}
+                          required
+                        />
+                        {isViolation && (
+                          <p className="mt-1 text-xs font-bold text-red-600 leading-snug">
+                            There are already more candidates registered for this slot, please provide a higher limit
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {modalError && (
+                <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-xs font-bold text-red-600 leading-snug">
+                  {modalError}
+                </div>
+              )}
+
               <div className="mt-4 flex justify-end gap-3">
                 <button
                   type="button"
@@ -382,7 +493,7 @@ export default function CompaniesPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || hasSlotViolation}
                   className="flex items-center justify-center rounded-xl bg-[#f6c430] px-4 py-2.5 text-sm font-bold text-[#002454] hover:shadow-lg disabled:opacity-50"
                 >
                   {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : "Save Company"}
@@ -465,9 +576,10 @@ export default function CompaniesPage() {
                   className="appearance-none rounded-xl border border-[#002454]/10 bg-white py-2 pl-3 pr-7 text-xs text-[#002454] outline-none focus:border-[#33aeda]"
                 >
                   <option value="">All Time Slots</option>
-                  <option value="1">Slot 1 (10:00 AM – 11:30 AM)</option>
-                  <option value="2">Slot 2 (11:45 AM – 1:00 PM)</option>
-                  <option value="3">Slot 3 (2:00 PM – 4:00 PM)</option>
+                  <option value="1">Slot 1 (10:00 AM – 11:00 AM)</option>
+                  <option value="2">Slot 2 (11:00 AM – 12:00 PM)</option>
+                  <option value="3">Slot 3 (1:30 PM – 2:30 PM)</option>
+                  <option value="4">Slot 4 (2:30 PM – 3:30 PM)</option>
                   <option value="none">No Time Slot Selected</option>
                 </select>
                 <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
@@ -540,7 +652,7 @@ export default function CompaniesPage() {
                           <td className="px-4 py-3">
                             {cand.slot_number ? (
                               <span className="inline-flex items-center gap-1 font-bold text-[#002454]">
-                                🕒 Slot {cand.slot_number}: {cand.slot_number === 1 ? "10:00 AM – 11:30 AM" : cand.slot_number === 2 ? "11:45 AM – 1:00 PM" : "2:00 PM – 4:00 PM"}
+                                🕒 Slot {cand.slot_number}: {cand.slot_number === 1 ? "10:00 AM – 11:00 AM" : cand.slot_number === 2 ? "11:00 AM – 12:00 PM" : cand.slot_number === 3 ? "1:30 PM – 2:30 PM" : "2:30 PM – 3:30 PM"}
                               </span>
                             ) : (
                               <span className="text-[#002454]/40 italic">No slot (Pref {cand.preference_number})</span>

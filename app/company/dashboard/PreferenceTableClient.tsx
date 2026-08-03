@@ -21,9 +21,10 @@ export default function PreferenceTableClient({
   });
 
   const getSlotBadge = (slotNum: number | null) => {
-    if (slotNum === 1) return "Slot 1 (10:00 AM – 11:30 AM)";
-    if (slotNum === 2) return "Slot 2 (11:45 AM – 1:00 PM)";
-    if (slotNum === 3) return "Slot 3 (2:00 PM – 4:00 PM)";
+    if (slotNum === 1) return "Slot 1 (10:00 AM – 11:00 AM)";
+    if (slotNum === 2) return "Slot 2 (11:00 AM – 12:00 PM)";
+    if (slotNum === 3) return "Slot 3 (1:30 PM – 2:30 PM)";
+    if (slotNum === 4) return "Slot 4 (2:30 PM – 3:30 PM)";
     return null;
   };
 
@@ -46,9 +47,10 @@ export default function PreferenceTableClient({
                 className="appearance-none rounded-xl border border-[#002454]/10 bg-[#f8fcfe] py-1.5 pl-3 pr-7 text-xs font-bold text-[#002454] outline-none focus:border-[#33aeda]"
               >
                 <option value="">All Time Slots</option>
-                <option value="1">Slot 1 (10:00 - 11:30)</option>
-                <option value="2">Slot 2 (11:45 - 1:00)</option>
-                <option value="3">Slot 3 (2:00 - 4:00)</option>
+                <option value="1">Slot 1 (10:00 - 11:00)</option>
+                <option value="2">Slot 2 (11:00 - 12:00)</option>
+                <option value="3">Slot 3 (1:30 - 2:30)</option>
+                <option value="4">Slot 4 (2:30 - 3:30)</option>
               </select>
               <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
             </div>

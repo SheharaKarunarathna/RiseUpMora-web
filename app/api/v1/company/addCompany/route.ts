@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { name, logo_url, is_it } = await req.json();
+    const { name, logo_url, is_it, slot_limits } = await req.json();
 
     if (!name) {
       return NextResponse.json({ error: "Company name is required" }, { status: 400 });
@@ -22,12 +22,31 @@ export async function POST(req: Request) {
       [name, logo_url || null, is_it === true]
     );
 
-    // Seed company_slot_counts for the new company (slots 1, 2, 3)
+    // Seed company_slot_counts for the new company (slots 1, 2, 3, 4)
     const companyId = res.rows[0].id;
+    const getLimit = (slotNum: number): number => {
+      if (slot_limits && typeof slot_limits === "object") {
+        const val = slot_limits[slotNum] ?? slot_limits[String(slotNum)];
+        if (typeof val === "number" && val > 0) return val;
+        if (typeof val === "string" && !isNaN(parseInt(val)) && parseInt(val) > 0) return parseInt(val);
+      }
+      return 10;
+    };
+
     await query(
-      `INSERT INTO company_slot_counts (company_id, slot_number, filled_count)
-       VALUES ($1, 1, 0), ($1, 2, 0), ($1, 3, 0)`,
-      [companyId]
+      `INSERT INTO company_slot_counts (company_id, slot_number, filled_count, max_limit)
+       VALUES 
+         ($1, 1, 0, $2),
+         ($1, 2, 0, $3),
+         ($1, 3, 0, $4),
+         ($1, 4, 0, $5)`,
+      [
+        companyId,
+        getLimit(1),
+        getLimit(2),
+        getLimit(3),
+        getLimit(4),
+      ]
     );
 
     return NextResponse.json({ success: true, company: res.rows[0] });

@@ -327,9 +327,10 @@ export default function UserManagementPage() {
               className="appearance-none rounded-xl border border-[#002454]/10 bg-white py-2.5 pl-4 pr-8 text-sm text-[#002454] outline-none transition-all focus:border-[#33aeda] focus:ring-2 focus:ring-[#33aeda]/10"
             >
               <option value="">All Time Slots</option>
-              <option value="1">Slot 1 (10:00 AM – 11:30 AM)</option>
-              <option value="2">Slot 2 (11:45 AM – 1:00 PM)</option>
-              <option value="3">Slot 3 (2:00 PM – 4:00 PM)</option>
+              <option value="1">Slot 1 (10:00 AM – 11:00 AM)</option>
+              <option value="2">Slot 2 (11:00 AM – 12:00 PM)</option>
+              <option value="3">Slot 3 (1:30 PM – 2:30 PM)</option>
+              <option value="4">Slot 4 (2:30 PM – 3:30 PM)</option>
               <option value="none">No Time Slot Selected</option>
             </select>
             <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
@@ -866,7 +867,7 @@ export default function UserManagementPage() {
                               <div className="ml-10 text-xs font-semibold">
                                 {pref.slot ? (
                                   <span className="inline-flex items-center gap-1 rounded-md bg-[#1688b2]/10 px-2 py-0.5 text-[#1688b2]">
-                                    🕒 Slot {pref.slot}: {pref.slot === 1 ? "10:00 AM – 11:30 AM" : pref.slot === 2 ? "11:45 AM – 1:00 PM" : "2:00 PM – 4:00 PM"}
+                                    🕒 Slot {pref.slot}: {pref.slot === 1 ? "10:00 AM – 11:00 AM" : pref.slot === 2 ? "11:00 AM – 12:00 PM" : pref.slot === 3 ? "1:30 PM – 2:30 PM" : "2:30 PM – 3:30 PM"}
                                   </span>
                                 ) : (
                                   <span className="text-amber-600 italic">No time slot selected</span>

@@ -96,9 +96,10 @@ export default function DepartmentDashboardClient({
               className="py-2 px-3 bg-[#f8fcfe] border border-[#002454]/10 rounded-xl text-xs font-bold text-[#002454] focus:outline-none focus:ring-2 focus:ring-[#33aeda]/30 focus:border-[#33aeda]"
             >
               <option value="">All Time Slots</option>
-              <option value="1">Slot 1 (10:00 - 11:30)</option>
-              <option value="2">Slot 2 (11:45 - 1:00)</option>
-              <option value="3">Slot 3 (2:00 - 4:00)</option>
+              <option value="1">Slot 1 (10:00 - 11:00)</option>
+              <option value="2">Slot 2 (11:00 - 12:00)</option>
+              <option value="3">Slot 3 (1:30 - 2:30)</option>
+              <option value="4">Slot 4 (2:30 - 3:30)</option>
               <option value="none">No Slot Selected</option>
             </select>
 

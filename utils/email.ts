@@ -208,9 +208,10 @@ export const sendApplicationConfirmationEmail = async (
   details: ApplicationConfirmationDetails,
 ) => {
   const formatSlot = (slotNumber?: number | null) => {
-    if (slotNumber === 1) return "Slot 1: 10:00 AM – 11:30 AM";
-    if (slotNumber === 2) return "Slot 2: 11:45 AM – 1:00 PM";
-    if (slotNumber === 3) return "Slot 3: 2:00 PM – 4:00 PM";
+    if (slotNumber === 1) return "Slot 1: 10:00 AM – 11:00 AM";
+    if (slotNumber === 2) return "Slot 2: 11:00 AM – 12:00 PM";
+    if (slotNumber === 3) return "Slot 3: 1:30 PM – 2:30 PM";
+    if (slotNumber === 4) return "Slot 4: 2:30 PM – 3:30 PM";
     return "No time slot selected";
   };
 

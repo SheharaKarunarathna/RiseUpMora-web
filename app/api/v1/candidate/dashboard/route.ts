@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, pool } from "@/lib/db";
-import { getSlotMax, getSlotStatus } from "@/app/api/v1/candidate/timeslots/route";
+import { getSlotStatus } from "@/app/api/v1/candidate/timeslots/route";
 import { sendApplicationConfirmationEmail } from "@/utils/email";
 
 export const runtime = "nodejs";
@@ -68,7 +68,7 @@ export async function GET() {
     let slotCounts: Record<string, Array<{ slot: number; filled: number; max: number; status: string }>> = {};
     if (prefCompanyIds.length > 0) {
       const countsResult = await query(
-        `SELECT csc.company_id, csc.slot_number, csc.filled_count, c.is_it
+        `SELECT csc.company_id, csc.slot_number, csc.filled_count, csc.max_limit, c.is_it
          FROM company_slot_counts csc
          JOIN companies c ON c.id = csc.company_id
          WHERE csc.company_id = ANY($1::uuid[])`,
@@ -77,7 +77,7 @@ export async function GET() {
       for (const row of countsResult.rows) {
         const compId = row.company_id;
         if (!slotCounts[compId]) slotCounts[compId] = [];
-        const max = getSlotMax(row.is_it, row.slot_number);
+        const max = parseInt(row.max_limit ?? (row.is_it ? 10 : 15));
         const filled = parseInt(row.filled_count);
         slotCounts[compId].push({
           slot: row.slot_number,
@@ -151,8 +151,8 @@ export async function PATCH(request: Request) {
     ? body.preferences.map((value) => (typeof value === "string" ? value.trim() : ""))
     : [];
   const comment = typeof body.comment === "string" ? body.comment.trim() : "";
-  const pref1Timeslot = typeof body.pref1Timeslot === "number" && [1, 2, 3].includes(body.pref1Timeslot) ? body.pref1Timeslot : null;
-  const pref2Timeslot = typeof body.pref2Timeslot === "number" && [1, 2, 3].includes(body.pref2Timeslot) ? body.pref2Timeslot : null;
+  const pref1Timeslot = typeof body.pref1Timeslot === "number" && [1, 2, 3, 4].includes(body.pref1Timeslot) ? body.pref1Timeslot : null;
+  const pref2Timeslot = typeof body.pref2Timeslot === "number" && [1, 2, 3, 4].includes(body.pref2Timeslot) ? body.pref2Timeslot : null;
 
   if (!name) {
     return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 });
@@ -270,7 +270,7 @@ export async function PATCH(request: Request) {
 
       for (const ins of timeslotInserts) {
         const countResult = await client.query(
-          `SELECT csc.filled_count, c.is_it
+          `SELECT csc.filled_count, csc.max_limit, c.is_it
            FROM company_slot_counts csc
            JOIN companies c ON c.id = csc.company_id
            WHERE csc.company_id = $1 AND csc.slot_number = $2
@@ -281,8 +281,8 @@ export async function PATCH(request: Request) {
           await client.query("ROLLBACK");
           return NextResponse.json({ error: "Slot data not found" }, { status: 400 });
         }
-        const { filled_count, is_it } = countResult.rows[0];
-        const max = getSlotMax(is_it, ins.slotNumber);
+        const { filled_count, max_limit, is_it } = countResult.rows[0];
+        const max = parseInt(max_limit ?? (is_it ? 10 : 15));
         if (parseInt(filled_count) >= max) {
           await client.query("ROLLBACK");
           return NextResponse.json(

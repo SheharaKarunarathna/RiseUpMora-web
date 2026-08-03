@@ -208,9 +208,10 @@ export default function CandidateDashboardPage() {
 
   const getSlotLabel = (slotNumber: number) => {
     switch (slotNumber) {
-      case 1: return "10:00 AM – 11:30 AM";
-      case 2: return "11:45 AM – 1:00 PM";
-      case 3: return "2:00 PM – 4:00 PM";
+      case 1: return "10:00 AM – 11:00 AM";
+      case 2: return "11:00 AM – 12:00 PM";
+      case 3: return "1:30 PM – 2:30 PM";
+      case 4: return "2:30 PM – 3:30 PM";
       default: return "";
     }
   };
@@ -746,7 +747,7 @@ export default function CandidateDashboardPage() {
                               disabled={isSaving}
                             >
                               <option value="">Select a time slot</option>
-                              {[1, 2, 3].map((slotNum) => {
+                              {[1, 2, 3, 4].map((slotNum) => {
                                 const info = getSlotStatusInfo(preference, slotNum);
                                 const isFilled = info?.status === "filled";
                                 return (

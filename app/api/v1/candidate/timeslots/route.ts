@@ -7,16 +7,6 @@ export const runtime = "nodejs";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// Slot capacity limits
-const SLOT_LIMITS = {
-  it: { 1: 8, 2: 10, 3: 12 } as Record<number, number>,
-  nonIt: { 1: 10, 2: 10, 3: 15 } as Record<number, number>,
-};
-
-export function getSlotMax(isIt: boolean, slotNumber: number): number {
-  return isIt ? SLOT_LIMITS.it[slotNumber] : SLOT_LIMITS.nonIt[slotNumber];
-}
-
 export function getSlotStatus(filled: number, max: number): "available" | "overcrowded" | "filled" {
   if (filled >= max) return "filled";
   if (max - filled <= 2) return "overcrowded";
@@ -39,7 +29,7 @@ export async function GET(request: NextRequest) {
     const [companyResult, countsResult] = await Promise.all([
       query("SELECT id, is_it FROM companies WHERE id = $1", [companyId]),
       query(
-        "SELECT slot_number, filled_count FROM company_slot_counts WHERE company_id = $1 ORDER BY slot_number",
+        "SELECT slot_number, filled_count, max_limit FROM company_slot_counts WHERE company_id = $1 ORDER BY slot_number",
         [companyId],
       ),
     ]);
@@ -51,14 +41,19 @@ export async function GET(request: NextRequest) {
     const isIt = companyResult.rows[0].is_it as boolean;
 
     // Build slot availability from counter cache
-    const countMap = new Map<number, number>();
+    const countMap = new Map<number, { filled: number; max: number }>();
     for (const row of countsResult.rows) {
-      countMap.set(row.slot_number, parseInt(row.filled_count));
+      countMap.set(row.slot_number, {
+        filled: parseInt(row.filled_count),
+        max: parseInt(row.max_limit ?? (isIt ? 10 : 15)),
+      });
     }
 
-    const slots = [1, 2, 3].map((slotNumber) => {
-      const filled = countMap.get(slotNumber) ?? 0;
-      const max = getSlotMax(isIt, slotNumber);
+    const defaultMax = isIt ? 10 : 15;
+    const slots = [1, 2, 3, 4].map((slotNumber) => {
+      const slotData = countMap.get(slotNumber);
+      const filled = slotData ? slotData.filled : 0;
+      const max = slotData ? slotData.max : defaultMax;
       return {
         slot: slotNumber,
         filled,
