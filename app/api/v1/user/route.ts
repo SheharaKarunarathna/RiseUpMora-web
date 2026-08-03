@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     if (role === "candidate") {
       sql = `
         SELECT u.id as user_id, c.id as candidate_id, u.name, u.email, c.student_id, c.faculty, c.department, c.contact_number, c.cv_url,
-               c.application_comment,
+               c.application_comment, c.pref_1_timeslot, c.pref_2_timeslot,
                cp1.name as pref_1_name, cp2.name as pref_2_name, cp3.name as pref_3_name, cp4.name as pref_4_name
         FROM users u 
         LEFT JOIN candidates c ON u.id = c.user_id 

@@ -33,11 +33,21 @@ type CandidateProfile = {
   cvUrl: string | null;
   preferences: Array<string | null>;
   comment: string;
+  pref1Timeslot: number | null;
+  pref2Timeslot: number | null;
 };
 
 type Company = {
   id: string;
   name: string;
+  is_it: boolean;
+};
+
+type SlotInfo = {
+  slot: number;
+  filled: number;
+  max: number;
+  status: "available" | "overcrowded" | "filled";
 };
 
 type FieldKey = "name" | "phone" | "studentId" | "faculty" | "department";
@@ -81,6 +91,10 @@ export default function CandidateDashboardPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [pref1Timeslot, setPref1Timeslot] = useState<number | null>(null);
+  const [pref2Timeslot, setPref2Timeslot] = useState<number | null>(null);
+  const [slotCounts, setSlotCounts] = useState<Record<string, SlotInfo[]>>({});
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Refs for auto-focusing inputs when edit mode activates
   const nameRef = useRef<HTMLInputElement>(null);
@@ -142,6 +156,9 @@ export default function CandidateDashboardPage() {
         setEditStudentId(data.candidate.studentId);
         setEditFaculty(data.candidate.faculty);
         setEditDepartment(data.candidate.department);
+        setPref1Timeslot(data.candidate.pref1Timeslot);
+        setPref2Timeslot(data.candidate.pref2Timeslot);
+        if ((data as any).slotCounts) setSlotCounts((data as any).slotCounts);
         setIsLoading(false);
       })
       .catch((requestError: unknown) => {
@@ -166,6 +183,38 @@ export default function CandidateDashboardPage() {
       ),
     );
     setSaveSuccess(false);
+    // Reset timeslot when company changes for pref 1 or 2
+    if (index === 0) setPref1Timeslot(null);
+    if (index === 1) setPref2Timeslot(null);
+    // Fetch slot counts for the newly selected company
+    if ((index === 0 || index === 1) && value) {
+      fetchSlotCounts(value);
+    }
+  };
+
+  const fetchSlotCounts = async (companyId: string) => {
+    try {
+      const res = await fetch(`/api/v1/candidate/timeslots?companyId=${companyId}`);
+      const data = await res.json();
+      if (data.slots) {
+        setSlotCounts((prev) => ({ ...prev, [companyId]: data.slots }));
+      }
+    } catch {
+      // Silently ignore
+    }
+  };
+
+  const getSlotLabel = (slotNumber: number) => {
+    switch (slotNumber) {
+      case 1: return "10:00 AM – 11:30 AM";
+      case 2: return "11:45 AM – 1:00 PM";
+      case 3: return "2:00 PM – 4:00 PM";
+      default: return "";
+    }
+  };
+
+  const getSlotStatusInfo = (companyId: string, slotNumber: number): SlotInfo | undefined => {
+    return slotCounts[companyId]?.find((s) => s.slot === slotNumber);
   };
 
   const getCvFilename = (url: string) => {
@@ -314,6 +363,19 @@ export default function CandidateDashboardPage() {
       setError("Each company preference must be different.");
       return;
     }
+    // Validate timeslots for pref 1 & 2
+    if (preferences[0] && !pref1Timeslot) {
+      setError("Please select a time slot for Preference 1.");
+      return;
+    }
+    if (preferences[1] && !pref2Timeslot) {
+      setError("Please select a time slot for Preference 2.");
+      return;
+    }
+    if (!agreedToTerms) {
+      setError("You must agree to the terms and conditions before submitting.");
+      return;
+    }
 
     setIsSaving(true);
 
@@ -329,6 +391,8 @@ export default function CandidateDashboardPage() {
           department: savedDepartment,
           preferences,
           comment,
+          pref1Timeslot: preferences[0] ? pref1Timeslot : null,
+          pref2Timeslot: preferences[1] ? pref2Timeslot : null,
         }),
       });
       const data = (await response.json()) as {
@@ -621,28 +685,84 @@ export default function CandidateDashboardPage() {
 
               <div className="application-preferences-grid">
                 {preferences.map((preference, index) => (
-                  <label key={index}>
-                    <span>Preference {index + 1}</span>
-                    <select
-                      value={preference}
-                      onChange={(event) => updatePreference(index, event.target.value)}
-                      disabled={isSaving}
-                    >
-                      <option value="">Select company (optional)</option>
-                      {companies.map((company) => (
-                        <option
-                          value={company.id}
-                          key={company.id}
-                          disabled={preferences.some(
-                            (selected, selectedIndex) =>
-                              selectedIndex !== index && selected === company.id,
-                          )}
-                        >
-                          {company.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <div key={index}>
+                    <label>
+                      <span>Preference {index + 1}</span>
+                      <select
+                        value={preference}
+                        onChange={(event) => updatePreference(index, event.target.value)}
+                        disabled={isSaving}
+                      >
+                        <option value="">Select company (optional)</option>
+                        {companies.map((company) => (
+                          <option
+                            value={company.id}
+                            key={company.id}
+                            disabled={preferences.some(
+                              (selected, selectedIndex) =>
+                                selectedIndex !== index && selected === company.id,
+                            )}
+                          >
+                            {company.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    {/* Time slot selector for Pref 1 & 2 only */}
+                    {(index === 0 || index === 1) && preference && (
+                      <div className="timeslot-group">
+                        <label>
+                          <span>Time Slot (required)</span>
+                          <div className="timeslot-select-wrap">
+                            <select
+                              value={index === 0 ? (pref1Timeslot ?? "") : (pref2Timeslot ?? "")}
+                              onChange={(e) => {
+                                const val = e.target.value ? parseInt(e.target.value) : null;
+                                if (index === 0) setPref1Timeslot(val);
+                                else setPref2Timeslot(val);
+                                setSaveSuccess(false);
+                              }}
+                              disabled={isSaving}
+                            >
+                              <option value="">Select a time slot</option>
+                              {[1, 2, 3].map((slotNum) => {
+                                const info = getSlotStatusInfo(preference, slotNum);
+                                const isFilled = info?.status === "filled";
+                                return (
+                                  <option key={slotNum} value={slotNum} disabled={isFilled}>
+                                    Slot {slotNum}: {getSlotLabel(slotNum)}
+                                    {isFilled ? " (Full)" : ""}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            {(() => {
+                              const selectedSlot = index === 0 ? pref1Timeslot : pref2Timeslot;
+                              if (!selectedSlot) return null;
+                              const info = getSlotStatusInfo(preference, selectedSlot);
+                              if (!info) return null;
+                              if (info.status === "overcrowded") {
+                                return (
+                                  <span className="timeslot-status timeslot-status--overcrowded">
+                                    This slot is overcrowded!
+                                  </span>
+                                );
+                              }
+                              if (info.status === "filled") {
+                                return (
+                                  <span className="timeslot-status timeslot-status--filled">
+                                    Sorry, this slot is filled!
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </section>
@@ -682,10 +802,29 @@ export default function CandidateDashboardPage() {
               </div>
             )}
 
+            <div className="terms-checkbox-area">
+              <input
+                type="checkbox"
+                id="dashboard-agree-terms"
+                checked={agreedToTerms}
+                onChange={(e) => {
+                  setAgreedToTerms(e.target.checked);
+                  setSaveSuccess(false);
+                }}
+                disabled={isSaving}
+              />
+              <span>
+                I agree to the{" "}
+                <a href="/terms-and-conditions" target="_blank" rel="noopener noreferrer">
+                  terms and conditions
+                </a>
+              </span>
+            </div>
+
             <button
               className="application-submit"
               type="submit"
-              disabled={isSaving}
+              disabled={isSaving || !agreedToTerms}
             >
               {isSaving ? (
                 <Loader2 className="signup-spinner" size={19} aria-hidden="true" />

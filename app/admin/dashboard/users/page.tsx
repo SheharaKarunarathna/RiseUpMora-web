@@ -17,6 +17,7 @@ export default function UserManagementPage() {
   const [candidateSearch, setCandidateSearch] = useState("");
   const [filterFaculty, setFilterFaculty] = useState("");
   const [filterDept, setFilterDept] = useState("");
+  const [filterTimeslot, setFilterTimeslot] = useState("");
 
   // Company coordinator search & filter
   const [coordSearch, setCoordSearch] = useState("");
@@ -61,6 +62,7 @@ export default function UserManagementPage() {
     setCandidateSearch("");
     setFilterFaculty("");
     setFilterDept("");
+    setFilterTimeslot("");
     setCoordSearch("");
     setFilterCompany("");
     setDeptCoordSearch("");
@@ -116,7 +118,12 @@ export default function UserManagementPage() {
           u.student_id?.toLowerCase().includes(q);
         const matchesFaculty = !filterFaculty || u.faculty === filterFaculty;
         const matchesDept = !filterDept || u.department === filterDept;
-        return matchesSearch && matchesFaculty && matchesDept;
+        const matchesTimeslot =
+          !filterTimeslot ||
+          (filterTimeslot === "none"
+            ? !u.pref_1_timeslot && !u.pref_2_timeslot
+            : String(u.pref_1_timeslot) === filterTimeslot || String(u.pref_2_timeslot) === filterTimeslot);
+        return matchesSearch && matchesFaculty && matchesDept && matchesTimeslot;
       });
     }
     if (activeTab === "company_coordinator") {
@@ -157,7 +164,7 @@ export default function UserManagementPage() {
   })();
 
   const hasActiveFilters =
-    (activeTab === "candidate" && (candidateSearch || filterFaculty || filterDept)) ||
+    (activeTab === "candidate" && (candidateSearch || filterFaculty || filterDept || filterTimeslot)) ||
     (activeTab === "company_coordinator" && (coordSearch || filterCompany)) ||
     (activeTab === "department_coordinator" && (deptCoordSearch || filterDeptCoord)) ||
     (activeTab === "panelist" && (panelSearch || filterPanelCompany || filterPanelNumber));
@@ -312,11 +319,27 @@ export default function UserManagementPage() {
             <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
           </div>
 
+          {/* Time slot filter */}
+          <div className="relative">
+            <select
+              value={filterTimeslot}
+              onChange={(e) => setFilterTimeslot(e.target.value)}
+              className="appearance-none rounded-xl border border-[#002454]/10 bg-white py-2.5 pl-4 pr-8 text-sm text-[#002454] outline-none transition-all focus:border-[#33aeda] focus:ring-2 focus:ring-[#33aeda]/10"
+            >
+              <option value="">All Time Slots</option>
+              <option value="1">Slot 1 (10:00 AM – 11:30 AM)</option>
+              <option value="2">Slot 2 (11:45 AM – 1:00 PM)</option>
+              <option value="3">Slot 3 (2:00 PM – 4:00 PM)</option>
+              <option value="none">No Time Slot Selected</option>
+            </select>
+            <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
+          </div>
+
           {/* Clear all filters */}
           {hasActiveFilters && (
             <button
               type="button"
-              onClick={() => { setCandidateSearch(""); setFilterFaculty(""); setFilterDept(""); }}
+              onClick={() => { setCandidateSearch(""); setFilterFaculty(""); setFilterDept(""); setFilterTimeslot(""); }}
               className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-bold text-red-500 transition-colors hover:bg-red-100"
             >
               <X size={13} /> Clear filters
@@ -814,32 +837,44 @@ export default function UserManagementPage() {
                 {/* Right Column: Company Preferences */}
                 <div className="rounded-2xl border border-[#002454]/10 bg-white p-5 shadow-sm">
                   <h3 className="mb-4 flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider text-[#002454]/50">
-                    <ListOrdered size={16} /> Company Preferences
+                    <ListOrdered size={16} /> Company Preferences & Time Slots
                   </h3>
                   {[
-                    viewUser.pref_1_name || (companies.find(c => c.id === viewUser.pref_1)?.name),
-                    viewUser.pref_2_name || (companies.find(c => c.id === viewUser.pref_2)?.name),
-                    viewUser.pref_3_name || (companies.find(c => c.id === viewUser.pref_3)?.name),
-                    viewUser.pref_4_name || (companies.find(c => c.id === viewUser.pref_4)?.name),
-                  ].some(Boolean) ? (
-                    <div className="space-y-2">
+                    { name: viewUser.pref_1_name || (companies.find(c => c.id === viewUser.pref_1)?.name), slot: viewUser.pref_1_timeslot },
+                    { name: viewUser.pref_2_name || (companies.find(c => c.id === viewUser.pref_2)?.name), slot: viewUser.pref_2_timeslot },
+                    { name: viewUser.pref_3_name || (companies.find(c => c.id === viewUser.pref_3)?.name), slot: null },
+                    { name: viewUser.pref_4_name || (companies.find(c => c.id === viewUser.pref_4)?.name), slot: null },
+                  ].some(p => Boolean(p.name)) ? (
+                    <div className="space-y-2.5">
                       {[
-                        viewUser.pref_1_name || (companies.find(c => c.id === viewUser.pref_1)?.name),
-                        viewUser.pref_2_name || (companies.find(c => c.id === viewUser.pref_2)?.name),
-                        viewUser.pref_3_name || (companies.find(c => c.id === viewUser.pref_3)?.name),
-                        viewUser.pref_4_name || (companies.find(c => c.id === viewUser.pref_4)?.name),
+                        { name: viewUser.pref_1_name || (companies.find(c => c.id === viewUser.pref_1)?.name), slot: viewUser.pref_1_timeslot },
+                        { name: viewUser.pref_2_name || (companies.find(c => c.id === viewUser.pref_2)?.name), slot: viewUser.pref_2_timeslot },
+                        { name: viewUser.pref_3_name || (companies.find(c => c.id === viewUser.pref_3)?.name), slot: null },
+                        { name: viewUser.pref_4_name || (companies.find(c => c.id === viewUser.pref_4)?.name), slot: null },
                       ]
-                        .filter(Boolean)
-                        .map((prefName, i) => (
-                          <div key={i} className="flex items-center gap-3 rounded-xl border border-[#002454]/5 bg-[#f8fcfe] p-2.5">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#33aeda]/10 text-xs font-black text-[#33aeda]">
-                              {i + 1}
-                            </span>
-                            <span className="text-sm font-bold text-[#002454]">
-                              {prefName}
-                            </span>
+                        .map((pref, i) => pref.name ? (
+                          <div key={i} className="flex flex-col gap-1.5 rounded-xl border border-[#002454]/5 bg-[#f8fcfe] p-3">
+                            <div className="flex items-center gap-3">
+                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#33aeda]/10 text-xs font-black text-[#33aeda]">
+                                {i + 1}
+                              </span>
+                              <span className="text-sm font-bold text-[#002454]">
+                                {pref.name}
+                              </span>
+                            </div>
+                            {(i === 0 || i === 1) && (
+                              <div className="ml-10 text-xs font-semibold">
+                                {pref.slot ? (
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-[#1688b2]/10 px-2 py-0.5 text-[#1688b2]">
+                                    🕒 Slot {pref.slot}: {pref.slot === 1 ? "10:00 AM – 11:30 AM" : pref.slot === 2 ? "11:45 AM – 1:00 PM" : "2:00 PM – 4:00 PM"}
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600 italic">No time slot selected</span>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        ))}
+                        ) : null)}
                     </div>
                   ) : (
                     <div className="rounded-xl border border-dashed border-[#002454]/20 bg-[#f8fcfe] p-4 text-center">

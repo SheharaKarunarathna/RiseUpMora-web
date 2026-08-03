@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query } from "@/lib/db";
+import { query, pool } from "@/lib/db";
+import { getSlotMax, getSlotStatus } from "@/app/api/v1/candidate/timeslots/route";
 
 export const runtime = "nodejs";
 
@@ -25,13 +26,15 @@ export async function GET() {
         `SELECT u.name, u.email, c.contact_number, c.student_id,
                 c.faculty, c.department, c.cv_url,
                 c.pref_1, c.pref_2, c.pref_3, c.pref_4,
-                c.application_comment
+                c.application_comment,
+                c.pref_1_timeslot, c.pref_2_timeslot,
+                c.id as candidate_id
          FROM users u
          JOIN candidates c ON c.user_id = u.id
          WHERE u.id = $1`,
         [session.user.id],
       ),
-      query("SELECT id, name FROM companies ORDER BY name ASC"),
+      query("SELECT id, name, is_it FROM companies ORDER BY name ASC"),
     ]);
 
     if (candidateResult.rowCount === 0) {
@@ -54,7 +57,35 @@ export async function GET() {
       pref_3: string | null;
       pref_4: string | null;
       application_comment: string | null;
+      pref_1_timeslot: number | null;
+      pref_2_timeslot: number | null;
+      candidate_id: string;
     };
+
+    // Fetch slot counts for companies in preferences
+    const prefCompanyIds = [candidate.pref_1, candidate.pref_2].filter((id): id is string => !!id);
+    let slotCounts: Record<string, Array<{ slot: number; filled: number; max: number; status: string }>> = {};
+    if (prefCompanyIds.length > 0) {
+      const countsResult = await query(
+        `SELECT csc.company_id, csc.slot_number, csc.filled_count, c.is_it
+         FROM company_slot_counts csc
+         JOIN companies c ON c.id = csc.company_id
+         WHERE csc.company_id = ANY($1::uuid[])`,
+        [prefCompanyIds],
+      );
+      for (const row of countsResult.rows) {
+        const compId = row.company_id;
+        if (!slotCounts[compId]) slotCounts[compId] = [];
+        const max = getSlotMax(row.is_it, row.slot_number);
+        const filled = parseInt(row.filled_count);
+        slotCounts[compId].push({
+          slot: row.slot_number,
+          filled,
+          max,
+          status: getSlotStatus(filled, max),
+        });
+      }
+    }
 
     return NextResponse.json({
       candidate: {
@@ -72,8 +103,11 @@ export async function GET() {
           candidate.pref_4,
         ],
         comment: candidate.application_comment ?? "",
+        pref1Timeslot: candidate.pref_1_timeslot,
+        pref2Timeslot: candidate.pref_2_timeslot,
       },
       companies: companyResult.rows,
+      slotCounts,
     });
   } catch (error: unknown) {
     console.error("Dashboard fetch error:", error);
@@ -98,6 +132,8 @@ export async function PATCH(request: Request) {
     department?: unknown;
     preferences?: unknown;
     comment?: unknown;
+    pref1Timeslot?: unknown;
+    pref2Timeslot?: unknown;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -114,6 +150,8 @@ export async function PATCH(request: Request) {
     ? body.preferences.map((value) => (typeof value === "string" ? value.trim() : ""))
     : [];
   const comment = typeof body.comment === "string" ? body.comment.trim() : "";
+  const pref1Timeslot = typeof body.pref1Timeslot === "number" && [1, 2, 3].includes(body.pref1Timeslot) ? body.pref1Timeslot : null;
+  const pref2Timeslot = typeof body.pref2Timeslot === "number" && [1, 2, 3].includes(body.pref2Timeslot) ? body.pref2Timeslot : null;
 
   if (!name) {
     return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 });
@@ -178,44 +216,153 @@ export async function PATCH(request: Request) {
     }
   }
 
+  // Validate timeslots: required when a company is selected for pref 1 or 2
+  if (preferences[0] && !pref1Timeslot) {
+    return NextResponse.json(
+      { error: "Please select a time slot for Preference 1" },
+      { status: 400 },
+    );
+  }
+  if (preferences[1] && !pref2Timeslot) {
+    return NextResponse.json(
+      { error: "Please select a time slot for Preference 2" },
+      { status: 400 },
+    );
+  }
+
   try {
-    await query(
-      `UPDATE users
-       SET name = $1
-       WHERE id = $2`,
-      [name, session.user.id],
-    );
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
 
-    await query(
-      `UPDATE candidates
-       SET contact_number = $1,
-           student_id     = $2,
-           faculty        = $3,
-           department     = $4,
-           pref_1         = $5,
-           pref_2         = $6,
-           pref_3         = $7,
-           pref_4         = $8,
-           application_comment = $9
-       WHERE user_id = $10`,
-      [
-        phone || null,
-        studentId || null,
-        faculty || null,
-        department || null,
-        preferences[0],
-        preferences[1],
-        preferences[2],
-        preferences[3],
-        comment || null,
-        session.user.id,
-      ],
-    );
+      // Get candidate ID
+      const candResult = await client.query(
+        "SELECT id FROM candidates WHERE user_id = $1",
+        [session.user.id],
+      );
+      const candidateId = candResult.rows[0].id;
 
-    return NextResponse.json({
-      success: true,
-      message: "Profile updated successfully",
-    });
+      // Remove old timeslot bookings
+      const oldBookingsResult = await client.query(
+        `SELECT company_id, slot_number FROM timeslot_bookings WHERE candidate_id = $1`,
+        [candidateId],
+      );
+      for (const old of oldBookingsResult.rows) {
+        if (old.slot_number) {
+          await client.query(
+            `UPDATE company_slot_counts SET filled_count = GREATEST(filled_count - 1, 0)
+             WHERE company_id = $1 AND slot_number = $2`,
+            [old.company_id, old.slot_number],
+          );
+        }
+      }
+      await client.query("DELETE FROM timeslot_bookings WHERE candidate_id = $1", [candidateId]);
+
+      // Validate capacity and insert new bookings for pref 1 & 2
+      const timeslotInserts: Array<{ companyId: string; slotNumber: number; prefNumber: number }> = [];
+      if (preferences[0] && pref1Timeslot) {
+        timeslotInserts.push({ companyId: preferences[0], slotNumber: pref1Timeslot, prefNumber: 1 });
+      }
+      if (preferences[1] && pref2Timeslot) {
+        timeslotInserts.push({ companyId: preferences[1], slotNumber: pref2Timeslot, prefNumber: 2 });
+      }
+
+      for (const ins of timeslotInserts) {
+        const countResult = await client.query(
+          `SELECT csc.filled_count, c.is_it
+           FROM company_slot_counts csc
+           JOIN companies c ON c.id = csc.company_id
+           WHERE csc.company_id = $1 AND csc.slot_number = $2
+           FOR UPDATE`,
+          [ins.companyId, ins.slotNumber],
+        );
+        if (countResult.rowCount === 0) {
+          await client.query("ROLLBACK");
+          return NextResponse.json({ error: "Slot data not found" }, { status: 400 });
+        }
+        const { filled_count, is_it } = countResult.rows[0];
+        const max = getSlotMax(is_it, ins.slotNumber);
+        if (parseInt(filled_count) >= max) {
+          await client.query("ROLLBACK");
+          return NextResponse.json(
+            { error: `Time slot ${ins.slotNumber} for Preference ${ins.prefNumber} is fully booked. Please select a different slot.` },
+            { status: 400 },
+          );
+        }
+        await client.query(
+          `INSERT INTO timeslot_bookings (company_id, candidate_id, slot_number, preference_number, no_timeslot_selected)
+           VALUES ($1, $2, $3, $4, FALSE)`,
+          [ins.companyId, candidateId, ins.slotNumber, ins.prefNumber],
+        );
+        await client.query(
+          `UPDATE company_slot_counts SET filled_count = filled_count + 1
+           WHERE company_id = $1 AND slot_number = $2`,
+          [ins.companyId, ins.slotNumber],
+        );
+      }
+
+      // Insert bookings for pref 3 & 4 (no timeslot)
+      if (preferences[2]) {
+        await client.query(
+          `INSERT INTO timeslot_bookings (company_id, candidate_id, slot_number, preference_number, no_timeslot_selected)
+           VALUES ($1, $2, NULL, 3, TRUE)`,
+          [preferences[2], candidateId],
+        );
+      }
+      if (preferences[3]) {
+        await client.query(
+          `INSERT INTO timeslot_bookings (company_id, candidate_id, slot_number, preference_number, no_timeslot_selected)
+           VALUES ($1, $2, NULL, 4, TRUE)`,
+          [preferences[3], candidateId],
+        );
+      }
+
+      // Update user name
+      await client.query("UPDATE users SET name = $1 WHERE id = $2", [name, session.user.id]);
+
+      // Update candidate record
+      await client.query(
+        `UPDATE candidates
+         SET contact_number = $1,
+             student_id     = $2,
+             faculty        = $3,
+             department     = $4,
+             pref_1         = $5,
+             pref_2         = $6,
+             pref_3         = $7,
+             pref_4         = $8,
+             application_comment = $9,
+             pref_1_timeslot = $10,
+             pref_2_timeslot = $11
+         WHERE user_id = $12`,
+        [
+          phone || null,
+          studentId || null,
+          faculty || null,
+          department || null,
+          preferences[0],
+          preferences[1],
+          preferences[2],
+          preferences[3],
+          comment || null,
+          preferences[0] ? pref1Timeslot : null,
+          preferences[1] ? pref2Timeslot : null,
+          session.user.id,
+        ],
+      );
+
+      await client.query("COMMIT");
+
+      return NextResponse.json({
+        success: true,
+        message: "Profile updated successfully",
+      });
+    } catch (txError) {
+      await client.query("ROLLBACK");
+      throw txError;
+    } finally {
+      client.release();
+    }
   } catch (error: unknown) {
     console.error("Dashboard preferences update error:", error);
     return NextResponse.json(

@@ -31,9 +31,13 @@ export default async function DepartmentDashboardOverview() {
 
       // 2. Fetch all candidates for this department
       const candidatesRes = await query(
-        `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
+        `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
+                c.pref_1_timeslot, c.pref_2_timeslot,
+                cp1.name as pref_1_name, cp2.name as pref_2_name
          FROM candidates c
          JOIN users u ON c.user_id = u.id
+         LEFT JOIN companies cp1 ON c.pref_1::uuid = cp1.id
+         LEFT JOIN companies cp2 ON c.pref_2::uuid = cp2.id
          WHERE c.department = $1
          ORDER BY c.created_at DESC`,
         [department]

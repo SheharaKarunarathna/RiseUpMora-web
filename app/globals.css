@@ -4930,3 +4930,162 @@ html {
   }
 }
 
+/* ── Time Slot Selector ── */
+
+.timeslot-group {
+  margin-top: 0.5rem;
+}
+
+.timeslot-group label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.timeslot-group label > span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgb(0 36 84 / 55%);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.timeslot-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.timeslot-select-wrap select {
+  flex: 1;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1.5px solid rgb(0 36 84 / 12%);
+  background: #ffffff;
+  color: #002454;
+  font-size: 0.85rem;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.timeslot-select-wrap select:focus {
+  border-color: #33aeda;
+  box-shadow: 0 0 0 3px rgb(51 174 218 / 10%);
+}
+
+.timeslot-select-wrap select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.timeslot-status {
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+.timeslot-status--overcrowded {
+  color: #d97706;
+}
+
+.timeslot-status--filled {
+  color: #dc2626;
+}
+
+/* ── Terms & Conditions Checkbox ── */
+
+.terms-checkbox-area {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.1rem 1.25rem;
+  margin-top: 0.5rem;
+  border-radius: 0.85rem;
+  border: 1.5px solid rgb(0 36 84 / 10%);
+  background: rgb(248 252 254 / 80%);
+  transition: border-color 0.2s;
+}
+
+.terms-checkbox-area:has(input:checked) {
+  border-color: rgb(51 174 218 / 35%);
+  background: rgb(51 174 218 / 4%);
+}
+
+.terms-checkbox-area input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 1.25rem;
+  margin-top: 0.1rem;
+  border: 2px solid rgb(0 36 84 / 20%);
+  border-radius: 0.35rem;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.terms-checkbox-area input[type="checkbox"]:checked {
+  background: #1688b2;
+  border-color: #1688b2;
+}
+
+.terms-checkbox-area input[type="checkbox"]:checked::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.terms-checkbox-area span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #002454;
+  line-height: 1.55;
+}
+
+.terms-checkbox-area a {
+  color: #1688b2;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s;
+}
+
+.terms-checkbox-area a:hover {
+  color: #0e6d8e;
+}
+
+/* ── Terms Content Page ── */
+
+.terms-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 1.5px solid rgb(0 36 84 / 8%);
+  background: rgb(248 252 254 / 80%);
+}
+
+.terms-content p {
+  margin: 0;
+  color: #002454;
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.75;
+}
+
+.terms-content p:first-child {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #002454;
+}

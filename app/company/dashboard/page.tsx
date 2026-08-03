@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Building2, Calendar, CheckCircle, Clock } from "lucide-react";
 import Link from "next/link";
 import ScheduleManager from "./ScheduleManager";
+import PreferenceTableClient from "./PreferenceTableClient";
 
 export const dynamic = "force-dynamic";
 
@@ -75,33 +76,41 @@ export default async function CompanyDashboardOverview(props: {
           [companyId]
         ),
         query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
+          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
+                  tb.slot_number, tb.no_timeslot_selected
            FROM candidates c
            JOIN users u ON c.user_id = u.id
+           LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1 AND tb.preference_number = 1
            WHERE c.pref_1 = $1
            ORDER BY c.created_at ASC`,
           [companyId]
         ),
         query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
+          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
+                  tb.slot_number, tb.no_timeslot_selected
            FROM candidates c
            JOIN users u ON c.user_id = u.id
+           LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1 AND tb.preference_number = 2
            WHERE c.pref_2 = $1
            ORDER BY c.created_at ASC`,
           [companyId]
         ),
         query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
+          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
+                  tb.slot_number, tb.no_timeslot_selected
            FROM candidates c
            JOIN users u ON c.user_id = u.id
+           LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1 AND tb.preference_number = 3
            WHERE c.pref_3 = $1
            ORDER BY c.created_at ASC`,
           [companyId]
         ),
         query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
+          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
+                  tb.slot_number, tb.no_timeslot_selected
            FROM candidates c
            JOIN users u ON c.user_id = u.id
+           LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1 AND tb.preference_number = 4
            WHERE c.pref_4 = $1
            ORDER BY c.created_at ASC`,
           [companyId]
@@ -262,10 +271,10 @@ export default async function CompanyDashboardOverview(props: {
             </p>
           </div>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            <PreferenceTable title="1st Preference" candidates={pref1Candidates} />
-            <PreferenceTable title="2nd Preference" candidates={pref2Candidates} />
-            <PreferenceTable title="3rd Preference" candidates={pref3Candidates} />
-            <PreferenceTable title="4th Preference" candidates={pref4Candidates} />
+            <PreferenceTableClient title="1st Preference" candidates={pref1Candidates} prefNum={1} />
+            <PreferenceTableClient title="2nd Preference" candidates={pref2Candidates} prefNum={2} />
+            <PreferenceTableClient title="3rd Preference" candidates={pref3Candidates} prefNum={3} />
+            <PreferenceTableClient title="4th Preference" candidates={pref4Candidates} prefNum={4} />
           </div>
         </div>
       )}
@@ -276,108 +285,6 @@ export default async function CompanyDashboardOverview(props: {
           initialAllocations={allAllocations}
           interestedCandidates={interestedCandidates}
         />
-      </div>
-    </div>
-  );
-}
-
-function PreferenceTable({
-  title,
-  candidates,
-}: {
-  title: string;
-  candidates: any[];
-}) {
-  return (
-    <div className="bg-white rounded-2xl border border-[#002454]/10 p-6 shadow-sm flex flex-col justify-between min-h-[300px]">
-      <div>
-        <div className="flex items-center justify-between mb-4 border-b border-[#002454]/5 pb-3">
-          <h3 className="text-lg font-bold text-[#002454]">{title}</h3>
-          <span className="inline-flex items-center rounded-full bg-[#33aeda]/10 px-2.5 py-0.5 text-xs font-bold text-[#1688b2]">
-            {candidates.length} {candidates.length === 1 ? "candidate" : "candidates"}
-          </span>
-        </div>
-
-        {candidates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center text-[#002454]/40">
-            <Building2 size={40} className="mb-2 text-[#002454]/20" />
-            <p className="font-semibold text-sm">No candidates selected this preference.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-[#002454]/5 text-[10px] font-extrabold uppercase text-[#002454]/50 tracking-wider">
-                  <th className="pb-2.5 pr-2 w-10">#</th>
-                  <th className="pb-2.5 pr-4">Candidate</th>
-                  <th className="pb-2.5 px-4">Index Number</th>
-                  <th className="pb-2.5 px-4">Department</th>
-                  <th className="pb-2.5 px-4">Applied Date</th>
-                  <th className="pb-2.5 pl-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {candidates.map((cand, index) => (
-                  <tr key={cand.id} className="border-b border-[#002454]/5 last:border-b-0 hover:bg-[#f8fcfe]">
-                    <td className="py-3 pr-2 text-xs font-bold text-[#002454]/60">
-                      #{index + 1}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <div className="font-bold text-sm text-[#002454] truncate max-w-[150px]" title={cand.candidate_name}>
-                        {cand.candidate_name}
-                      </div>
-                      <div className="text-xs text-[#002454]/50 mt-0.5 truncate max-w-[150px]" title={cand.email}>
-                        {cand.email}
-                      </div>
-                      {cand.contact_number && (
-                        <div className="text-[11px] text-[#002454]/70 mt-1 font-semibold flex items-center gap-1">
-                          <span>📞</span> <span>{cand.contact_number}</span>
-                        </div>
-                      )}
-                      {cand.application_comment && (
-                        <div
-                          className="text-[10px] text-amber-600 bg-amber-50 rounded px-1.5 py-0.5 mt-1.5 inline-block max-w-[150px] truncate"
-                          title={cand.application_comment}
-                        >
-                          Comment: {cand.application_comment}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-xs text-[#002454]/80">
-                        {cand.student_id || "N/A"}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="text-[10px] text-[#002454]/50 mt-0.5 truncate max-w-[100px]" title={cand.department}>
-                        {cand.department}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-xs font-semibold text-[#002454]/60">
-                      {cand.created_at
-                        ? new Date(cand.created_at).toLocaleDateString()
-                        : "N/A"}
-                    </td>
-                    <td className="py-3 pl-4 text-right">
-                      {cand.cv_url ? (
-                        <a
-                          href={`/api/v1/candidate/cv/${cand.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-lg bg-[#33aeda]/10 hover:bg-[#33aeda]/20 px-2.5 py-1.5 text-xs font-bold text-[#1688b2] transition-colors"
-                        >
-                          CV
-                        </a>
-                      ) : (
-                        <span className="text-xs font-bold text-slate-300">No CV</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   );

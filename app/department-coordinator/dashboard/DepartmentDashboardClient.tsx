@@ -14,6 +14,10 @@ type Candidate = {
   cv_url: string;
   application_comment: string;
   created_at: string;
+  pref_1_timeslot?: number | null;
+  pref_2_timeslot?: number | null;
+  pref_1_name?: string | null;
+  pref_2_name?: string | null;
 };
 
 export default function DepartmentDashboardClient({
@@ -24,14 +28,22 @@ export default function DepartmentDashboardClient({
   department: string;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [slotFilter, setSlotFilter] = useState("");
 
   const filteredCandidates = initialCandidates.filter((cand) => {
     const searchLower = searchQuery.toLowerCase();
-    return (
+    const matchesSearch =
       (cand.candidate_name && cand.candidate_name.toLowerCase().includes(searchLower)) ||
       (cand.email && cand.email.toLowerCase().includes(searchLower)) ||
-      (cand.student_id && cand.student_id.toLowerCase().includes(searchLower))
-    );
+      (cand.student_id && cand.student_id.toLowerCase().includes(searchLower));
+
+    const matchesSlot =
+      !slotFilter ||
+      (slotFilter === "none"
+        ? !cand.pref_1_timeslot && !cand.pref_2_timeslot
+        : String(cand.pref_1_timeslot) === slotFilter || String(cand.pref_2_timeslot) === slotFilter);
+
+    return matchesSearch && matchesSlot;
   });
 
   const handleDownloadExcel = () => {
@@ -77,6 +89,19 @@ export default function DepartmentDashboardClient({
                 className="w-full pl-10 pr-4 py-2 bg-[#f8fcfe] border border-[#002454]/10 rounded-xl text-sm text-[#002454] focus:outline-none focus:ring-2 focus:ring-[#33aeda]/30 focus:border-[#33aeda] transition-all"
               />
             </div>
+
+            <select
+              value={slotFilter}
+              onChange={(e) => setSlotFilter(e.target.value)}
+              className="py-2 px-3 bg-[#f8fcfe] border border-[#002454]/10 rounded-xl text-xs font-bold text-[#002454] focus:outline-none focus:ring-2 focus:ring-[#33aeda]/30 focus:border-[#33aeda]"
+            >
+              <option value="">All Time Slots</option>
+              <option value="1">Slot 1 (10:00 - 11:30)</option>
+              <option value="2">Slot 2 (11:45 - 1:00)</option>
+              <option value="3">Slot 3 (2:00 - 4:00)</option>
+              <option value="none">No Slot Selected</option>
+            </select>
+
             <button
               onClick={handleDownloadExcel}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-[#002454] text-white rounded-xl text-sm font-medium hover:bg-[#002454]/90 transition-colors shrink-0"
@@ -134,6 +159,20 @@ export default function DepartmentDashboardClient({
                       {cand.application_comment && (
                         <div className="text-[11px] text-amber-700 bg-amber-50 rounded-md px-2 py-1 mt-2 inline-block border border-amber-100">
                           <span className="font-semibold">Note:</span> {cand.application_comment}
+                        </div>
+                      )}
+                      {(cand.pref_1_name || cand.pref_2_name) && (
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+                          {cand.pref_1_name && (
+                            <span className="inline-flex items-center gap-1 rounded bg-[#002454]/5 px-1.5 py-0.5 font-medium text-[#002454]">
+                              P1: {cand.pref_1_name} {cand.pref_1_timeslot ? `(Slot ${cand.pref_1_timeslot})` : ""}
+                            </span>
+                          )}
+                          {cand.pref_2_name && (
+                            <span className="inline-flex items-center gap-1 rounded bg-[#002454]/5 px-1.5 py-0.5 font-medium text-[#002454]">
+                              P2: {cand.pref_2_name} {cand.pref_2_timeslot ? `(Slot ${cand.pref_2_timeslot})` : ""}
+                            </span>
+                          )}
                         </div>
                       )}
                     </td>

@@ -11,15 +11,15 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const { id, name, logo_url } = await req.json();
+    const { id, name, logo_url, is_it } = await req.json();
 
     if (!id || !name) {
       return NextResponse.json({ error: "Company ID and name are required" }, { status: 400 });
     }
 
     const res = await query(
-      "UPDATE companies SET name = $1, logo_url = $2 WHERE id = $3 RETURNING *",
-      [name, logo_url || null, id]
+      "UPDATE companies SET name = $1, logo_url = $2, is_it = $3 WHERE id = $4 RETURNING *",
+      [name, logo_url || null, is_it === true, id]
     );
 
     if (res.rowCount === 0) {
