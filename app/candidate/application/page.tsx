@@ -385,54 +385,93 @@ export default function CandidateApplicationPage() {
               <div className="candidate-interviews-section">
                 <h2 className="candidate-interviews-title">My Interviews & Feedback</h2>
                 <div className="candidate-interviews-list">
-                  {interviews.map((item) => (
-                    <div key={item.allocation_id} className="candidate-interview-card">
-                      <div className="candidate-interview-header">
-                        <div className="candidate-interview-company">
-                          {item.logo_url && (
-                            <img src={item.logo_url} alt={item.company_name} className="candidate-interview-logo" />
-                          )}
-                          <h3>{item.company_name}</h3>
-                        </div>
-                        <span className={`candidate-interview-status status-${item.status.toLowerCase()}`}>
-                          {item.status === "0" ? "Pending" : item.status === "1" ? "Scheduled" : item.status === "ONGOING" ? "Ongoing" : "Completed"}
-                        </span>
-                      </div>
+                  {interviews
+                    .slice()
+                    .sort((a, b) => (a.pref_rank ?? 99) - (b.pref_rank ?? 99))
+                    .map((item, i) => {
+                      const isCompleted =
+                        item.allocation_status === "COMPLETED" ||
+                        item.technical_skills != null ||
+                        item.written_feedback != null;
+                      const isOngoing =
+                        !isCompleted &&
+                        (item.allocation_status === "ONGOING" || item.allocation_status === "ongoing");
 
-                      {item.status === "ONGOING" && (
-                        <div className="candidate-interview-ongoing-notice">
-                          <span>🔔</span> Your mock interview session is currently active. Please report to your assigned panel list.
-                        </div>
-                      )}
+                      const statusLabel = isCompleted
+                        ? "Completed"
+                        : isOngoing
+                        ? "Ongoing"
+                        : null;
 
-                      {item.status === "COMPLETED" && (
-                        <div className="candidate-interview-feedback">
-                          <h4>Mock Interview Evaluation</h4>
-                          <div className="candidate-feedback-ratings">
-                            <div className="candidate-rating-item">
-                              <span className="rating-label">Technical Skills</span>
-                              <span className="rating-value">{item.technical_skills || "N/A"}/10</span>
+                      const statusClass = isCompleted
+                        ? "completed"
+                        : isOngoing
+                        ? "ongoing"
+                        : "";
+
+                      return (
+                        <div key={item.company_id || i} className="candidate-interview-card">
+                          <div className="candidate-interview-header">
+                            <div className="candidate-interview-company">
+                              {item.logo_url && (
+                                <img src={item.logo_url} alt={item.company_name} className="candidate-interview-logo" />
+                              )}
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                {item.pref_rank && (
+                                  <span style={{ fontSize: "11px", fontWeight: 800, color: "#33aeda", background: "rgba(51,174,218,0.12)", padding: "2px 7px", borderRadius: "5px" }}>
+                                    Pref #{item.pref_rank}
+                                  </span>
+                                )}
+                                <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 800, color: "#002454" }}>{item.company_name}</h3>
+                              </div>
                             </div>
-                            <div className="candidate-rating-item">
-                              <span className="rating-label">Communication</span>
-                              <span className="rating-value">{item.communication || "N/A"}/10</span>
-                            </div>
-                            <div className="candidate-rating-item">
-                              <span className="rating-label">Industry Ready</span>
-                              <span className="rating-value">{item.industry_ready || "N/A"}/10</span>
-                            </div>
+                            {statusLabel && (
+                              <span className={`candidate-interview-status status-${statusClass}`}>
+                                {statusLabel}
+                              </span>
+                            )}
                           </div>
 
-                          {item.written_feedback && (
-                            <div className="candidate-feedback-notes">
-                              <h5>Panelist Advice & Notes</h5>
-                              <blockquote>"{item.written_feedback}"</blockquote>
+                          {item.panel_number && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "6px", fontSize: "12px", color: "#002454", background: "rgba(0,36,84,0.03)", padding: "4px 10px", borderRadius: "6px", fontWeight: 600 }}>
+                              <span>📋 Panel: {item.panel_number}</span>
+                            </div>
+                          )}
+
+                          {isOngoing && (
+                            <div className="candidate-interview-ongoing-notice" style={{ marginTop: "6px", padding: "6px 10px", fontSize: "12px" }}>
+                              <span>🔔</span> Mock interview active. Please report to panel {item.panel_number || "list"}.
+                            </div>
+                          )}
+
+                          {isCompleted && (
+                            <div className="candidate-interview-feedback" style={{ marginTop: "8px", gap: "0.5rem" }}>
+                              <h4 style={{ fontSize: "0.75rem", margin: "0" }}>Mock Interview Evaluation</h4>
+                              <div className="candidate-feedback-ratings" style={{ gap: "0.5rem" }}>
+                                <div className="candidate-rating-item" style={{ padding: "0.4rem 0.75rem" }}>
+                                  <span className="rating-label">Technical</span>
+                                  <span className="rating-value">{item.technical_skills ?? "N/A"}/10</span>
+                                </div>
+                                <div className="candidate-rating-item" style={{ padding: "0.4rem 0.75rem" }}>
+                                  <span className="rating-label">Communication</span>
+                                  <span className="rating-value">{item.communication ?? "N/A"}/10</span>
+                                </div>
+                                <div className="candidate-rating-item" style={{ padding: "0.4rem 0.75rem" }}>
+                                  <span className="rating-label">Industry Ready</span>
+                                  <span className="rating-value">{item.industry_ready ?? "N/A"}/10</span>
+                                </div>
+                              </div>
+
+                              {item.written_feedback && (
+                                <div className="candidate-feedback-notes" style={{ paddingTop: "0.5rem" }}>
+                                  <blockquote style={{ fontSize: "0.8rem", padding: "0.5rem 0.75rem" }}>"{item.written_feedback}"</blockquote>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      );
+                    })}
                 </div>
               </div>
             )}

@@ -45,13 +45,44 @@ export async function GET() {
       ),
       query("SELECT id, name, logo_url, is_it FROM companies ORDER BY name ASC"),
       query(
-        `SELECT a.id as allocation_id, comp.name as company_name, comp.logo_url, a.status,
-                f.technical_skills, f.communication, f.industry_ready, f.written_feedback
-         FROM allocations a
-         JOIN companies comp ON a.company_id = comp.id
-         JOIN candidates c ON a.candidate_id = c.id
+        `SELECT 
+           comp.id as company_id,
+           comp.name as company_name,
+           comp.logo_url,
+           CASE 
+             WHEN c.pref_1 IS NOT NULL AND c.pref_1 != '' AND c.pref_1::text = comp.id::text THEN 1
+             WHEN c.pref_2 IS NOT NULL AND c.pref_2 != '' AND c.pref_2::text = comp.id::text THEN 2
+             WHEN c.pref_3 IS NOT NULL AND c.pref_3 != '' AND c.pref_3::text = comp.id::text THEN 3
+             WHEN c.pref_4 IS NOT NULL AND c.pref_4 != '' AND c.pref_4::text = comp.id::text THEN 4
+             ELSE NULL
+           END as pref_rank,
+           CASE 
+             WHEN c.pref_1 IS NOT NULL AND c.pref_1 != '' AND c.pref_1::text = comp.id::text THEN c.pref_1_timeslot
+             WHEN c.pref_2 IS NOT NULL AND c.pref_2 != '' AND c.pref_2::text = comp.id::text THEN c.pref_2_timeslot
+             ELSE NULL
+           END as slot_number,
+           a.id as allocation_id,
+           a.status as allocation_status,
+           a.interview_date,
+           a.time_slot,
+           a.panel_number,
+           f.technical_skills,
+           f.communication,
+           f.industry_ready,
+           f.written_feedback
+         FROM users u
+         JOIN candidates c ON c.user_id = u.id
+         CROSS JOIN companies comp
+         LEFT JOIN allocations a ON a.candidate_id = c.id AND a.company_id = comp.id
          LEFT JOIN feedback f ON f.candidate_id = c.id AND f.company_id = comp.id
-         WHERE c.user_id = $1`,
+         WHERE u.id = $1 AND (
+           (c.pref_1 IS NOT NULL AND c.pref_1 != '' AND c.pref_1::text = comp.id::text) OR 
+           (c.pref_2 IS NOT NULL AND c.pref_2 != '' AND c.pref_2::text = comp.id::text) OR 
+           (c.pref_3 IS NOT NULL AND c.pref_3 != '' AND c.pref_3::text = comp.id::text) OR 
+           (c.pref_4 IS NOT NULL AND c.pref_4 != '' AND c.pref_4::text = comp.id::text) OR 
+           a.id IS NOT NULL
+         )
+         ORDER BY pref_rank ASC NULLS LAST`,
         [session.user.id]
       ),
     ]);
@@ -130,8 +161,9 @@ export async function GET() {
     });
   } catch (error: unknown) {
     console.error("Candidate application fetch error:", error);
+    const msg = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Unable to load the application" },
+      { error: `Unable to load the application: ${msg}` },
       { status: 500 },
     );
   }
