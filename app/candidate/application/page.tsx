@@ -383,7 +383,7 @@ export default function CandidateApplicationPage() {
             {/* Interviews & Feedback Portal */}
             {interviews.length > 0 && (
               <div className="candidate-interviews-section">
-                <h2 className="candidate-interviews-title">My Interviews & Feedback</h2>
+                <h2 className="candidate-interviews-title">Selected companies</h2>
                 <div className="candidate-interviews-list">
                   {interviews
                     .slice()
@@ -400,18 +400,18 @@ export default function CandidateApplicationPage() {
                       const statusLabel = isCompleted
                         ? "Completed"
                         : isOngoing
-                        ? "Ongoing"
-                        : null;
+                          ? "Ongoing"
+                          : null;
 
                       const statusClass = isCompleted
                         ? "completed"
                         : isOngoing
-                        ? "ongoing"
-                        : "";
+                          ? "ongoing"
+                          : "";
 
                       return (
                         <div key={item.company_id || i} className="candidate-interview-card">
-                          <div className="candidate-interview-header">
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                             <div className="candidate-interview-company">
                               {item.logo_url && (
                                 <img src={item.logo_url} alt={item.company_name} className="candidate-interview-logo" />

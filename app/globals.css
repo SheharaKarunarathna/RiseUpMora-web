@@ -4757,9 +4757,12 @@ html {
 .candidate-interview-card {
   border: 1px solid rgb(0 36 84 / 8%);
   border-radius: 0.85rem;
-  padding: 0.75rem 0.9rem;
+  padding: 0.65rem 0.9rem;
   background: #f8fcfe;
   transition: transform 180ms ease, box-shadow 180ms ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .candidate-interview-card:hover {
@@ -4773,9 +4776,9 @@ html {
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-  border-bottom: none;
-  padding-bottom: 0;
-  margin-bottom: 0;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .candidate-interview-company {
