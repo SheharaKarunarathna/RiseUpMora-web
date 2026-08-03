@@ -4119,8 +4119,14 @@ html {
   }
 
   .candidate-application-form > .signup-error,
-  .candidate-application-form > .signup-success {
+  .candidate-application-form > .signup-success,
+  .terms-checkbox-area {
     margin-inline: 1.25rem;
+  }
+
+  .terms-checkbox-area {
+    margin-top: 1.25rem;
+    margin-bottom: 1.5rem;
   }
 
   .application-submit {
@@ -4998,10 +5004,10 @@ html {
 
 .terms-checkbox-area {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.75rem;
   padding: 1.1rem 1.25rem;
-  margin-top: 0.5rem;
+  margin: 1.5rem 2rem 1.75rem;
   border-radius: 0.85rem;
   border: 1.5px solid rgb(0 36 84 / 10%);
   background: rgb(248 252 254 / 80%);
