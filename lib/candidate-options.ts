@@ -33,3 +33,12 @@ export function isDepartmentForFaculty(
 ) {
   return (departmentsByFaculty[faculty] as readonly string[]).includes(department);
 }
+
+export const TIME_SLOTS = [
+  { id: "08:00 AM - 11:00 AM", label: "Time Slot 1 (08:00 AM - 11:00 AM)" },
+  { id: "11:00 AM - 02:00 PM", label: "Time Slot 2 (11:00 AM - 02:00 PM)" },
+  { id: "02:00 PM - 05:00 PM", label: "Time Slot 3 (02:00 PM - 05:00 PM)" },
+] as const;
+
+export type TimeSlotId = (typeof TIME_SLOTS)[number]["id"];
+

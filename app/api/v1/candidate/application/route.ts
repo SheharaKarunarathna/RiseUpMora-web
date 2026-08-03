@@ -34,6 +34,7 @@ export async function GET() {
         `SELECT u.name, u.email, c.contact_number, c.student_id,
                 c.faculty, c.department, c.cv_url,
                 c.pref_1, c.pref_2, c.pref_3, c.pref_4,
+                c.preferred_time_slot,
                 c.application_comment
          FROM users u
          JOIN candidates c ON c.user_id = u.id
@@ -72,6 +73,7 @@ export async function GET() {
       pref_2: string | null;
       pref_3: string | null;
       pref_4: string | null;
+      preferred_time_slot: string | null;
       application_comment: string | null;
     };
 
@@ -90,6 +92,7 @@ export async function GET() {
           candidate.pref_3,
           candidate.pref_4,
         ],
+        preferredTimeSlot: candidate.preferred_time_slot || "08:00 AM - 11:00 AM",
         comment: candidate.application_comment ?? "",
       },
       companies: companyResult.rows,
@@ -114,6 +117,7 @@ export async function POST(request: Request) {
     cvUrl?: unknown;
     publicId?: unknown;
     preferences?: unknown;
+    preferredTimeSlot?: unknown;
     comment?: unknown;
   };
   try {
@@ -127,6 +131,7 @@ export async function POST(request: Request) {
   const rawPreferences = Array.isArray(body.preferences)
     ? body.preferences.map((value) => (typeof value === "string" ? value.trim() : ""))
     : [];
+  const preferredTimeSlot = typeof body.preferredTimeSlot === "string" ? body.preferredTimeSlot.trim() : "08:00 AM - 11:00 AM";
   const comment = typeof body.comment === "string" ? body.comment.trim() : "";
 
   // Normalize preferences to array of 4 string | null elements
@@ -285,8 +290,9 @@ export async function POST(request: Request) {
            pref_2 = $3,
            pref_3 = $4,
            pref_4 = $5,
-           application_comment = $6
-       WHERE user_id = $7`,
+           application_comment = $6,
+           preferred_time_slot = $7
+       WHERE user_id = $8`,
       [
         savedCvUrl,
         preferences[0],
@@ -294,6 +300,7 @@ export async function POST(request: Request) {
         preferences[2],
         preferences[3],
         comment || null,
+        preferredTimeSlot,
         session.user.id,
       ],
     );

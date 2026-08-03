@@ -15,6 +15,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { TIME_SLOTS } from "@/lib/candidate-options";
 import SiteBackground from "../../site-background";
 import SiteHeader from "../../site-header";
 
@@ -27,6 +28,7 @@ type CandidateApplication = {
   department: string;
   cvUrl: string | null;
   preferences: Array<string | null>;
+  preferredTimeSlot?: string;
   comment: string;
 };
 
@@ -64,6 +66,7 @@ export default function CandidateApplicationPage() {
   const [candidate, setCandidate] = useState<CandidateApplication | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [preferences, setPreferences] = useState(["", "", "", ""]);
+  const [preferredTimeSlot, setPreferredTimeSlot] = useState("08:00 AM - 11:00 AM");
   const [comment, setComment] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -149,6 +152,9 @@ export default function CandidateApplicationPage() {
             data.candidate.preferences[index] ?? "",
           ),
         );
+        if (data.candidate.preferredTimeSlot) {
+          setPreferredTimeSlot(data.candidate.preferredTimeSlot);
+        }
         setComment(data.candidate.comment);
         setIsLoading(false);
       })
@@ -292,6 +298,7 @@ export default function CandidateApplicationPage() {
           cvUrl: uploadedCvUrl,
           publicId: uploadedPublicId,
           preferences,
+          preferredTimeSlot,
           comment,
         }),
       });
@@ -564,6 +571,34 @@ export default function CandidateApplicationPage() {
                       </select>
                     </label>
                   ))}
+                </div>
+              </section>
+
+              <section className="application-section" aria-labelledby="timeslot-title">
+                <div className="application-section__heading">
+                  <span>04</span>
+                  <div>
+                    <h2 id="timeslot-title">Preferred Time Slot</h2>
+                    <p>Select your preferred interview time window for the interview day.</p>
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-[#002454] mb-1">
+                    Select Time Slot
+                  </label>
+                  <select
+                    value={preferredTimeSlot}
+                    onChange={(e) => setPreferredTimeSlot(e.target.value)}
+                    disabled={isSubmitting}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-[#002454] shadow-sm focus:border-[#33aeda] focus:outline-none focus:ring-2 focus:ring-[#33aeda]/20"
+                  >
+                    {TIME_SLOTS.map((slot) => (
+                      <option key={slot.id} value={slot.id}>
+                        {slot.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </section>
 

@@ -54,6 +54,7 @@ CREATE TABLE candidates (
     pref_2 VARCHAR(255),
     pref_3 VARCHAR(255),
     pref_4 VARCHAR(255),
+    preferred_time_slot VARCHAR(100) DEFAULT '08:00 AM - 11:00 AM',
     application_comment TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
