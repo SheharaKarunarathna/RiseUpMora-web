@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, pool } from "@/lib/db";
 import { getSlotMax, getSlotStatus } from "@/app/api/v1/candidate/timeslots/route";
+import { sendApplicationConfirmationEmail } from "@/utils/email";
 
 export const runtime = "nodejs";
 
@@ -352,6 +353,45 @@ export async function PATCH(request: Request) {
       );
 
       await client.query("COMMIT");
+
+      // Send confirmation email to candidate asynchronously
+      try {
+        if (session.user?.email) {
+          const prefIds = preferences.filter((id): id is string => !!id);
+          const compRes = prefIds.length > 0
+            ? await query("SELECT id, name FROM companies WHERE id = ANY($1::uuid[])", [prefIds])
+            : { rows: [] };
+          const compMap = new Map(compRes.rows.map((c) => [c.id, c.name]));
+
+          const emailPrefs = preferences
+            .map((id, index) => {
+              if (!id) return null;
+              return {
+                rank: index + 1,
+                companyName: compMap.get(id) || "Company",
+                slotNumber: index === 0 ? pref1Timeslot : index === 1 ? pref2Timeslot : null,
+              };
+            })
+            .filter((p): p is NonNullable<typeof p> => p !== null);
+
+          const candCvRes = await query("SELECT cv_url FROM candidates WHERE id = $1", [candidateId]);
+          const cvUrl = candCvRes.rows[0]?.cv_url || null;
+
+          sendApplicationConfirmationEmail(session.user.email, {
+            candidateName: name || session.user.name || "Candidate",
+            candidateEmail: session.user.email,
+            studentId: studentId || "",
+            faculty: faculty || "",
+            department: department || "",
+            phone: phone || "",
+            cvUrl,
+            preferences: emailPrefs,
+            comment: comment || null,
+          }).catch((err) => console.error("Confirmation email error:", err));
+        }
+      } catch (emailErr) {
+        console.error("Confirmation email preparation error:", emailErr);
+      }
 
       return NextResponse.json({
         success: true,

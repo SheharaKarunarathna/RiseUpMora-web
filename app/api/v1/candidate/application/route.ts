@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getCandidateCvAsset } from "@/lib/cloudinary-cv";
 import { query, pool } from "@/lib/db";
 import { getSlotMax, getSlotStatus } from "@/app/api/v1/candidate/timeslots/route";
+import { sendApplicationConfirmationEmail } from "@/utils/email";
 
 export const runtime = "nodejs";
 
@@ -212,7 +213,7 @@ export async function POST(request: Request) {
   }
 
   const candidateResult = await query(
-    `SELECT id, student_id, faculty, department, cv_url
+    `SELECT id, student_id, faculty, department, contact_number, cv_url
      FROM candidates
      WHERE user_id = $1`,
     [session.user.id],
@@ -229,6 +230,7 @@ export async function POST(request: Request) {
     student_id: string;
     faculty: string;
     department: string;
+    contact_number: string;
     cv_url: string | null;
   };
 
@@ -455,6 +457,42 @@ export async function POST(request: Request) {
       );
 
       await client.query("COMMIT");
+
+      // Send confirmation email to candidate asynchronously
+      try {
+        if (session.user?.email) {
+          const prefIds = preferences.filter((id): id is string => !!id);
+          const compRes = prefIds.length > 0
+            ? await query("SELECT id, name FROM companies WHERE id = ANY($1::uuid[])", [prefIds])
+            : { rows: [] };
+          const compMap = new Map(compRes.rows.map((c) => [c.id, c.name]));
+
+          const emailPrefs = preferences
+            .map((id, index) => {
+              if (!id) return null;
+              return {
+                rank: index + 1,
+                companyName: compMap.get(id) || "Company",
+                slotNumber: index === 0 ? pref1Timeslot : index === 1 ? pref2Timeslot : null,
+              };
+            })
+            .filter((p): p is NonNullable<typeof p> => p !== null);
+
+          sendApplicationConfirmationEmail(session.user.email, {
+            candidateName: session.user.name || "Candidate",
+            candidateEmail: session.user.email,
+            studentId: candidate.student_id,
+            faculty: candidate.faculty,
+            department: candidate.department,
+            phone: candidate.contact_number,
+            cvUrl: savedCvUrl,
+            preferences: emailPrefs,
+            comment: comment || null,
+          }).catch((err) => console.error("Confirmation email error:", err));
+        }
+      } catch (emailErr) {
+        console.error("Confirmation email preparation error:", emailErr);
+      }
 
       return NextResponse.json({
         success: true,
