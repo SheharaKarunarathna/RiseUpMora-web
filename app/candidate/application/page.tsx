@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   ArrowLeft,
+  Building2,
   CheckCircle2,
   ExternalLink,
   FileText,
@@ -36,6 +37,7 @@ type Company = {
   id: string;
   name: string;
   is_it: boolean;
+  logo_url?: string | null;
 };
 
 type SlotInfo = {
@@ -608,25 +610,43 @@ export default function CandidateApplicationPage() {
                     <div key={index}>
                       <label>
                         <span>Preference {index + 1}</span>
-                        <select
-                          value={preference}
-                          onChange={(event) => updatePreference(index, event.target.value)}
-                          disabled={isSubmitting}
-                        >
-                          <option value="">Select company (optional)</option>
-                          {companies.map((company) => (
-                            <option
-                              value={company.id}
-                              key={company.id}
-                              disabled={preferences.some(
-                                (selected, selectedIndex) =>
-                                  selectedIndex !== index && selected === company.id,
-                              )}
-                            >
-                              {company.name}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="company-select-wrap">
+                          {(() => {
+                            const comp = companies.find((c) => c.id === preference);
+                            if (!comp) return null;
+                            if (comp.logo_url) {
+                              return (
+                                <div className="company-select-logo" title={comp.name}>
+                                  <img src={comp.logo_url} alt={comp.name} />
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="company-select-logo-placeholder" title={comp.name}>
+                                <Building2 size={16} />
+                              </div>
+                            );
+                          })()}
+                          <select
+                            value={preference}
+                            onChange={(event) => updatePreference(index, event.target.value)}
+                            disabled={isSubmitting}
+                          >
+                            <option value="">Select company (optional)</option>
+                            {companies.map((company) => (
+                              <option
+                                value={company.id}
+                                key={company.id}
+                                disabled={preferences.some(
+                                  (selected, selectedIndex) =>
+                                    selectedIndex !== index && selected === company.id,
+                                )}
+                              >
+                                {company.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </label>
 
                       {/* Time slot selector for Pref 1 & 2 only */}

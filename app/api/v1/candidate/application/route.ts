@@ -43,7 +43,7 @@ export async function GET() {
          WHERE u.id = $1`,
         [session.user.id],
       ),
-      query("SELECT id, name, is_it FROM companies ORDER BY name ASC"),
+      query("SELECT id, name, logo_url, is_it FROM companies ORDER BY name ASC"),
       query(
         `SELECT a.id as allocation_id, comp.name as company_name, comp.logo_url, a.status,
                 f.technical_skills, f.communication, f.industry_ready, f.written_feedback
@@ -463,16 +463,18 @@ export async function POST(request: Request) {
         if (session.user?.email) {
           const prefIds = preferences.filter((id): id is string => !!id);
           const compRes = prefIds.length > 0
-            ? await query("SELECT id, name FROM companies WHERE id = ANY($1::uuid[])", [prefIds])
+            ? await query("SELECT id, name, logo_url FROM companies WHERE id = ANY($1::uuid[])", [prefIds])
             : { rows: [] };
-          const compMap = new Map(compRes.rows.map((c) => [c.id, c.name]));
+          const compMap = new Map(compRes.rows.map((c) => [c.id, c]));
 
           const emailPrefs = preferences
             .map((id, index) => {
               if (!id) return null;
+              const comp = compMap.get(id);
               return {
                 rank: index + 1,
-                companyName: compMap.get(id) || "Company",
+                companyName: comp?.name || "Company",
+                logoUrl: comp?.logo_url || null,
                 slotNumber: index === 0 ? pref1Timeslot : index === 1 ? pref2Timeslot : null,
               };
             })

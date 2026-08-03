@@ -5095,3 +5095,57 @@ html {
   font-weight: 700;
   color: #002454;
 }
+
+/* ── Company Select Logo Badge ── */
+
+.company-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.company-select-wrap select {
+  flex: 1;
+  min-width: 0;
+}
+
+.company-select-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  border-radius: 0.65rem;
+  border: 1.5px solid rgb(0 36 84 / 12%);
+  background: #ffffff;
+  padding: 0.25rem;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgb(0 36 84 / 5%);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.company-select-logo:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgb(0 36 84 / 10%);
+}
+
+.company-select-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.company-select-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem;
+  border-radius: 0.65rem;
+  border: 1.5px dashed rgb(0 36 84 / 15%);
+  background: rgb(248 252 254);
+  color: rgb(0 36 84 / 35%);
+}

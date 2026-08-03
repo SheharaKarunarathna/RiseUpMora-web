@@ -197,6 +197,7 @@ export type ApplicationConfirmationDetails = {
   preferences: Array<{
     rank: number;
     companyName: string;
+    logoUrl?: string | null;
     slotNumber?: number | null;
   }>;
   comment?: string | null;
@@ -230,16 +231,32 @@ export const sendApplicationConfirmationEmail = async (
             (p) => `
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #f8fcfe; border: 1px solid rgba(0,36,84,0.08); border-radius: 12px; margin-bottom: 10px; border-collapse: separate; padding: 12px 16px;">
               <tr>
-                <td style="font-weight: 800; color: #002454; font-size: 15px; vertical-align: middle;">
-                  <strong style="color: #33aeda; margin-right: 8px;">#${p.rank}</strong> ${safe(p.companyName)}
+                <td style="vertical-align: middle;">
+                  <table role="presentation" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding-right: 10px; vertical-align: middle;">
+                        <strong style="color: #33aeda; font-size: 15px;">#${p.rank}</strong>
+                      </td>
+                      ${
+                        p.logoUrl
+                          ? `<td style="padding-right: 12px; vertical-align: middle;">
+                              <img src="${p.logoUrl}" alt="${safe(p.companyName)}" width="36" height="36" style="max-height: 36px; max-width: 50px; object-fit: contain; vertical-align: middle; border-radius: 6px; border: 1px solid rgba(0,36,84,0.06); background: #ffffff; padding: 2px;" />
+                             </td>`
+                          : ""
+                      }
+                      <td style="font-weight: 800; color: #002454; font-size: 15px; vertical-align: middle;">
+                        ${safe(p.companyName)}
+                      </td>
+                    </tr>
+                  </table>
                 </td>
                 <td style="text-align: right; vertical-align: middle;">
                   ${
                     p.rank === 1 || p.rank === 2
-                      ? `<span style="background: rgba(51,174,218,0.12); color: #1688b2; font-weight: 700; font-size: 12px; padding: 6px 12px; border-radius: 8px; display: inline-block;">
+                      ? `<span style="background: rgba(51,174,218,0.12); color: #1688b2; font-weight: 700; font-size: 12px; padding: 6px 12px; border-radius: 8px; display: inline-block; white-space: nowrap;">
                           ${formatSlot(p.slotNumber)}
                          </span>`
-                      : `<span style="color: #718096; font-size: 12px; font-style: italic;">No time slot required</span>`
+                      : `<span style="color: #718096; font-size: 12px; font-style: italic; white-space: nowrap;">No time slot required</span>`
                   }
                 </td>
               </tr>
