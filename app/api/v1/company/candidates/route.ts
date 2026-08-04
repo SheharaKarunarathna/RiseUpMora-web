@@ -24,12 +24,13 @@ export async function GET(req: Request) {
       `SELECT c.id as candidate_id, u.name as candidate_name, u.email, c.student_id,
               c.faculty, c.department, c.contact_number, c.cv_url, c.application_comment,
               tb.preference_number, tb.slot_number, tb.no_timeslot_selected,
+              tb.created_at as preference_added_at,
               c.created_at
        FROM timeslot_bookings tb
        JOIN candidates c ON tb.candidate_id = c.id
        JOIN users u ON c.user_id = u.id
        WHERE tb.company_id = $1
-       ORDER BY tb.preference_number ASC, tb.slot_number ASC NULLS LAST, u.name ASC`,
+       ORDER BY tb.slot_number ASC NULLS LAST, c.student_id ASC NULLS LAST, tb.created_at ASC`,
       [companyId]
     );
 
