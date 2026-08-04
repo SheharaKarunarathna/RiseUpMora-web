@@ -96,12 +96,28 @@ export async function POST(request: Request) {
     );
     const userId = userResult.rows[0].id;
 
-    await client.query(
-      `INSERT INTO candidates
-        (user_id, student_id, faculty, department, contact_number)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [userId, studentId, faculty, department, phone],
-    );
+    await client.query("SAVEPOINT before_candidates_insert");
+    try {
+      await client.query(
+        `INSERT INTO candidates
+          (user_id, student_id, faculty, department, contact_number, status)
+         VALUES ($1, $2, $3, $4, $5, 'Registered')`,
+        [userId, studentId, faculty, department, phone],
+      );
+    } catch (insertErr: any) {
+      if (insertErr?.code === "42703") {
+        // status column doesn't exist yet — roll back to savepoint and retry without it
+        await client.query("ROLLBACK TO SAVEPOINT before_candidates_insert");
+        await client.query(
+          `INSERT INTO candidates
+            (user_id, student_id, faculty, department, contact_number)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [userId, studentId, faculty, department, phone],
+        );
+      } else {
+        throw insertErr;
+      }
+    }
 
     const token = jwt.sign(
       {

@@ -60,6 +60,15 @@ export async function POST(req: Request) {
           "UPDATE allocations SET status = $1 WHERE id = $2",
           [status, allocationId]
         );
+        // Also update candidate status if column exists
+        try {
+          await query(
+            "UPDATE candidates SET status = $1 WHERE id = (SELECT candidate_id FROM allocations WHERE id = $2)",
+            [status, allocationId]
+          );
+        } catch (err: any) {
+          if (err?.code !== "42703") throw err;
+        }
         await query("COMMIT");
       } catch (err) {
         await query("ROLLBACK");
@@ -101,6 +110,16 @@ export async function POST(req: Request) {
              written_feedback = EXCLUDED.written_feedback`,
         [candidateId, panelistId, companyId, technicalSkills, communication, industryReady, score, writtenFeedback]
       );
+
+      // Update candidate status to Evaluated if column exists
+      try {
+        await query(
+          "UPDATE candidates SET status = 'Evaluated' WHERE id = $1",
+          [candidateId]
+        );
+      } catch (err: any) {
+        if (err?.code !== "42703") throw err;
+      }
 
       return NextResponse.json({ success: true, message: "Feedback evaluation saved successfully" });
     } else {
