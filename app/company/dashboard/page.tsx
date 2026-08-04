@@ -295,8 +295,8 @@ export default async function CompanyDashboardOverview(props: {
 
         {viewMode === "timeslot" ? (
           <div className="flex flex-col gap-8">
-            {/* The 4 Time Slot Tables */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            {/* The 4 Time Slot Tables (Stacked Vertically One by One) */}
+            <div className="flex flex-col gap-8 w-full">
               <PreferenceTableClient
                 title="Slot 1 (10:00 AM – 11:00 AM)"
                 subtitle="Candidates who selected Time Slot 1 (Pref 1 priority, then FCFS)"
@@ -339,7 +339,7 @@ export default async function CompanyDashboardOverview(props: {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <div className="flex flex-col gap-8 w-full">
             <PreferenceTableClient
               title="1st Preference"
               candidates={pref1Candidates}

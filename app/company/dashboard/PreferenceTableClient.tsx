@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, ChevronDown, Clock, Tag } from "lucide-react";
+import { Building2, ChevronDown, Clock, Tag, ExternalLink, Copy, Check } from "lucide-react";
 
 export default function PreferenceTableClient({
   title,
@@ -21,6 +21,7 @@ export default function PreferenceTableClient({
   subtitle?: string;
 }) {
   const [slotFilter, setSlotFilter] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const filteredCandidates = candidates.filter((cand) => {
     if (!slotFilter) return true;
@@ -62,28 +63,38 @@ export default function PreferenceTableClient({
     });
   };
 
+  const handleCopyPhone = (candId: string, phone: string) => {
+    if (!phone) return;
+    navigator.clipboard.writeText(phone);
+    setCopiedId(candId);
+    setTimeout(() => {
+      setCopiedId(null);
+    }, 2000);
+  };
+
   return (
-    <div className="bg-white rounded-2xl border border-[#002454]/10 p-6 shadow-sm flex flex-col justify-between min-h-[320px]">
+    <div className="bg-white rounded-2xl border-2 border-[#002454]/15 p-4 sm:p-6 shadow-sm flex flex-col justify-between min-h-[320px] transition-all">
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-[#002454]/5 pb-3">
+        {/* Table Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b-2 border-[#002454]/10 pb-4">
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-[#002454]">{title}</h3>
-              <span className="inline-flex items-center rounded-full bg-[#33aeda]/10 px-2.5 py-0.5 text-xs font-bold text-[#1688b2]">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base sm:text-lg font-extrabold text-[#002454] tracking-tight">{title}</h3>
+              <span className="inline-flex items-center rounded-full bg-[#33aeda]/15 px-2.5 py-0.5 text-xs font-black text-[#0d6082] border border-[#33aeda]/30">
                 {candidates.length} {candidates.length === 1 ? "candidate" : "candidates"}
               </span>
             </div>
             {subtitle && (
-              <p className="text-[11px] text-[#002454]/50 mt-0.5 font-medium">{subtitle}</p>
+              <p className="text-xs text-[#002454]/60 mt-1 font-medium leading-relaxed">{subtitle}</p>
             )}
           </div>
 
           {showSlotFilter && candidates.length > 0 && (
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <select
                 value={slotFilter}
                 onChange={(e) => setSlotFilter(e.target.value)}
-                className="appearance-none rounded-xl border border-[#002454]/10 bg-[#f8fcfe] py-1.5 pl-3 pr-7 text-xs font-bold text-[#002454] outline-none focus:border-[#33aeda]"
+                className="w-full sm:w-auto appearance-none rounded-xl border-2 border-[#002454]/20 bg-[#f8fcfe] py-1.5 pl-3 pr-8 text-xs font-extrabold text-[#002454] outline-none focus:border-[#33aeda]"
               >
                 <option value="">All Time Slots</option>
                 <option value="1">Slot 1 (10:00 - 11:00)</option>
@@ -91,114 +102,261 @@ export default function PreferenceTableClient({
                 <option value="3">Slot 3 (1:30 - 2:30)</option>
                 <option value="4">Slot 4 (2:30 - 3:30)</option>
               </select>
-              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#002454]/40 pointer-events-none" />
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#002454]/50 pointer-events-none" />
             </div>
           )}
         </div>
 
+        {/* Empty State */}
         {sortedCandidates.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center text-[#002454]/40">
-            <Building2 size={40} className="mb-2 text-[#002454]/20" />
-            <p className="font-semibold text-sm">
+          <div className="flex flex-col items-center justify-center py-16 text-center text-[#002454]/40 border-2 border-dashed border-[#002454]/10 rounded-xl bg-[#fbfdfe]">
+            <Building2 size={44} className="mb-2 text-[#002454]/25" />
+            <p className="font-bold text-sm text-[#002454]/70">
               {slotFilter ? "No candidates found for this time slot." : "No candidates registered for this section."}
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-[#002454]/5 text-[10px] font-extrabold uppercase text-[#002454]/50 tracking-wider">
-                  <th className="pb-2.5 pr-2 w-10">#</th>
-                  <th className="pb-2.5 px-3">Ref No.</th>
-                  <th className="pb-2.5 pr-4">Candidate</th>
-                  <th className="pb-2.5 px-3">Department</th>
-                  {showPrefBadge && <th className="pb-2.5 px-3">Preference</th>}
-                  {showSlotFilter && <th className="pb-2.5 px-3">Time Slot</th>}
-                  <th className="pb-2.5 px-3">Added Time</th>
-                  <th className="pb-2.5 pl-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedCandidates.map((cand, index) => (
-                  <tr key={cand.id} className="border-b border-[#002454]/5 last:border-b-0 hover:bg-[#f8fcfe]">
-                    <td className="py-3 pr-2 text-xs font-bold text-[#002454]/60">
-                      #{index + 1}
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="font-extrabold text-xs text-[#002454] bg-[#002454]/5 px-2 py-0.5 rounded inline-block">
-                        {cand.student_id || "N/A"}
-                      </div>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <div className="font-bold text-sm text-[#002454] truncate max-w-[150px]" title={cand.candidate_name}>
-                        {cand.candidate_name}
-                      </div>
-                      <div className="text-xs text-[#002454]/50 mt-0.5 truncate max-w-[150px]" title={cand.email}>
-                        {cand.email}
-                      </div>
-                      {cand.contact_number && (
-                        <div className="text-[11px] text-[#002454]/70 mt-1 font-semibold flex items-center gap-1">
-                          <span>📞</span> <span>{cand.contact_number}</span>
-                        </div>
-                      )}
-                      {cand.application_comment && (
-                        <div
-                          className="text-[10px] text-amber-600 bg-amber-50 rounded px-1.5 py-0.5 mt-1.5 inline-block max-w-[150px] truncate"
-                          title={cand.application_comment}
-                        >
-                          Comment: {cand.application_comment}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="text-xs font-semibold text-[#002454]/70 truncate max-w-[110px]" title={cand.department}>
-                        {cand.department}
-                      </div>
-                    </td>
-                    {showPrefBadge && (
-                      <td className="py-3 px-3">
-                        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold ${
-                          cand.preference_number === 1
-                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                            : "bg-[#f6c430]/20 text-[#8a6b00]"
-                        }`}>
-                          <Tag size={10} /> Pref {cand.preference_number || (cand.pref_1 === cand.company_id ? 1 : cand.pref_2 === cand.company_id ? 2 : cand.pref_3 === cand.company_id ? 3 : 4)}
-                        </span>
+          <>
+            {/* Desktop & Tablet Table View (Visible Borders) */}
+            <div className="hidden md:block overflow-x-auto rounded-xl border-2 border-[#002454]/20 shadow-sm bg-white">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#002454]/5 border-b-2 border-[#002454]/20 text-xs font-black text-[#002454] uppercase tracking-wider">
+                    <th className="py-3 px-3 border-r border-[#002454]/15 w-12 text-center">#</th>
+                    <th className="py-3 px-3 border-r border-[#002454]/15">Ref No.</th>
+                    <th className="py-3 px-4 border-r border-[#002454]/15 min-w-[220px]">Candidate Details</th>
+                    <th className="py-3 px-3 border-r border-[#002454]/15 min-w-[170px]">Department</th>
+                    {showPrefBadge && <th className="py-3 px-3 border-r border-[#002454]/15 text-center">Preference</th>}
+                    {showSlotFilter && <th className="py-3 px-3 border-r border-[#002454]/15 text-center">Time Slot</th>}
+                    <th className="py-3 px-3 border-r border-[#002454]/15 min-w-[120px]">Added Time</th>
+                    <th className="py-3 px-4 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y border-t border-[#002454]/15 divide-[#002454]/15">
+                  {sortedCandidates.map((cand, index) => (
+                    <tr
+                      key={cand.id}
+                      className="hover:bg-[#f0f7fc] transition-colors odd:bg-white even:bg-[#fbfdfe]"
+                    >
+                      <td className="py-3.5 px-3 border-r border-[#002454]/15 text-xs font-black text-[#002454]/70 text-center">
+                        #{index + 1}
                       </td>
-                    )}
-                    {showSlotFilter && (
-                      <td className="py-3 px-3">
-                        {cand.slot_number ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-[#1688b2]/10 px-2 py-0.5 text-[11px] font-bold text-[#1688b2]">
-                            <Clock size={11} /> Slot {cand.slot_number}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-amber-600 italic">No slot</span>
+                      <td className="py-3.5 px-3 border-r border-[#002454]/15">
+                        <div className="font-black text-xs text-[#002454] bg-[#002454]/10 border border-[#002454]/20 px-2 py-1 rounded-md inline-block tracking-wide">
+                          {cand.student_id || "N/A"}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 border-r border-[#002454]/15">
+                        {/* Student Name fully visible */}
+                        <div className="font-extrabold text-sm text-[#002454] whitespace-normal break-words">
+                          {cand.candidate_name}
+                        </div>
+                        {/* Student Email fully visible */}
+                        <div className="text-xs text-[#002454]/80 font-semibold whitespace-normal break-words mt-0.5">
+                          {cand.email}
+                        </div>
+                        {/* Mobile Number fully visible + Copy icon button */}
+                        {cand.contact_number && (
+                          <div className="text-xs text-[#002454] mt-1.5 font-extrabold flex items-center gap-2 flex-wrap">
+                            <span className="flex items-center gap-1 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[#002454]">
+                              <span>📞</span>
+                              <span>{cand.contact_number}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyPhone(cand.id, cand.contact_number)}
+                              title={copiedId === cand.id ? "Copied!" : "Copy mobile number"}
+                              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-black bg-[#002454]/10 hover:bg-[#33aeda] text-[#002454] hover:text-white transition-all border border-[#002454]/20 shadow-xs active:scale-95 cursor-pointer"
+                            >
+                              {copiedId === cand.id ? (
+                                <>
+                                  <Check size={11} className="text-emerald-600" />
+                                  <span className="text-emerald-700 font-extrabold">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={11} />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                        {cand.application_comment && (
+                          <div className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 rounded px-2 py-1 mt-2 whitespace-normal break-words">
+                            Comment: {cand.application_comment}
+                          </div>
                         )}
                       </td>
-                    )}
-                    <td className="py-3 px-3 text-xs font-semibold text-[#002454]/70">
-                      {formatAddedTime(cand.preference_added_at || cand.created_at)}
-                    </td>
-                    <td className="py-3 pl-4 text-right">
-                      {cand.cv_url ? (
-                        <a
-                          href={`/api/v1/candidate/cv/${cand.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-lg bg-[#33aeda]/10 hover:bg-[#33aeda]/20 px-2.5 py-1.5 text-xs font-bold text-[#1688b2] transition-colors"
+                      <td className="py-3.5 px-3 border-r border-[#002454]/15 relative group">
+                        {/* High-Contrast Department Badge + Hover Popup displaying Full Name */}
+                        <div
+                          className="font-extrabold text-xs text-[#002454] bg-[#002454]/10 border border-[#002454]/25 px-2.5 py-1.5 rounded-lg whitespace-normal break-words shadow-xs transition-colors hover:bg-[#33aeda]/20 hover:border-[#33aeda]/50 cursor-pointer"
+                          title={cand.department}
                         >
-                          CV
-                        </a>
-                      ) : (
-                        <span className="text-xs font-bold text-slate-300">No CV</span>
+                          {cand.department || "N/A"}
+                        </div>
+
+                        {cand.department && (
+                          <div className="absolute left-2 bottom-full mb-2 hidden group-hover:block z-50 bg-[#002454] text-white text-xs font-black px-3.5 py-2.5 rounded-xl shadow-2xl border-2 border-[#33aeda] pointer-events-none max-w-sm whitespace-normal break-words min-w-[200px]">
+                            <div className="text-[10px] text-[#f6c430] uppercase tracking-wider font-extrabold mb-1 flex items-center gap-1">
+                              <span>🏢</span> <span>Full Department Name</span>
+                            </div>
+                            <div className="text-white text-xs font-black leading-snug">{cand.department}</div>
+                            <div className="absolute left-6 top-full w-0 h-0 border-x-6 border-x-transparent border-t-6 border-t-[#002454]" />
+                          </div>
+                        )}
+                      </td>
+                      {showPrefBadge && (
+                        <td className="py-3.5 px-3 border-r border-[#002454]/15 text-center">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-black shadow-xs ${
+                              cand.preference_number === 1
+                                ? "bg-emerald-100 text-emerald-900 border-2 border-emerald-400"
+                                : "bg-[#f6c430]/25 text-[#7a5c00] border border-[#f6c430]/50"
+                            }`}
+                          >
+                            <Tag size={11} /> Pref {cand.preference_number || (cand.pref_1 === cand.company_id ? 1 : cand.pref_2 === cand.company_id ? 2 : cand.pref_3 === cand.company_id ? 3 : 4)}
+                          </span>
+                        </td>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      {showSlotFilter && (
+                        <td className="py-3.5 px-3 border-r border-[#002454]/15 text-center">
+                          {cand.slot_number ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-[#1688b2]/15 border border-[#1688b2]/30 px-2 py-1 text-[11px] font-extrabold text-[#1688b2]">
+                              <Clock size={11} /> Slot {cand.slot_number}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-bold text-amber-700 italic">No slot</span>
+                          )}
+                        </td>
+                      )}
+                      <td className="py-3.5 px-3 border-r border-[#002454]/15 text-xs font-bold text-[#002454]/80 whitespace-normal break-words">
+                        {formatAddedTime(cand.preference_added_at || cand.created_at)}
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        {cand.cv_url ? (
+                          <a
+                            href={`/api/v1/candidate/cv/${cand.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#33aeda] hover:bg-[#289ac4] px-3 py-1.5 text-xs font-black text-white shadow-xs transition-colors"
+                          >
+                            <span>CV</span>
+                            <ExternalLink size={12} />
+                          </a>
+                        ) : (
+                          <span className="text-xs font-bold text-slate-300">No CV</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards View (Optimized for Small Screens) */}
+            <div className="block md:hidden flex flex-col gap-3">
+              {sortedCandidates.map((cand, index) => (
+                <div
+                  key={cand.id}
+                  className="rounded-xl border-2 border-[#002454]/20 p-4 bg-[#fbfdfe] hover:bg-white shadow-xs flex flex-col gap-3 transition-all"
+                >
+                  <div className="flex items-center justify-between border-b border-[#002454]/15 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-[#002454]/60">#{index + 1}</span>
+                      <span className="font-black text-xs text-[#002454] bg-[#002454]/10 border border-[#002454]/20 px-2 py-0.5 rounded tracking-wide">
+                        Ref: {cand.student_id || "N/A"}
+                      </span>
+                    </div>
+
+                    {showPrefBadge && (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-black ${
+                          cand.preference_number === 1
+                            ? "bg-emerald-100 text-emerald-900 border border-emerald-400"
+                            : "bg-[#f6c430]/25 text-[#7a5c00] border border-[#f6c430]/40"
+                        }`}
+                      >
+                        <Tag size={10} /> Pref {cand.preference_number || 1}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Candidate Name, Email, Mobile - fully visible */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="font-extrabold text-sm text-[#002454] whitespace-normal break-words">
+                      {cand.candidate_name}
+                    </div>
+                    <div className="text-xs text-[#002454]/80 font-semibold whitespace-normal break-words">
+                      {cand.email}
+                    </div>
+                    {cand.contact_number && (
+                      <div className="text-xs text-[#002454] font-extrabold mt-0.5 flex items-center gap-2 flex-wrap">
+                        <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded">
+                          📞 {cand.contact_number}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyPhone(cand.id, cand.contact_number)}
+                          title={copiedId === cand.id ? "Copied!" : "Copy mobile number"}
+                          className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-black bg-[#002454]/10 hover:bg-[#33aeda] text-[#002454] hover:text-white transition-all border border-[#002454]/20 cursor-pointer"
+                        >
+                          {copiedId === cand.id ? (
+                            <>
+                              <Check size={10} className="text-emerald-600" />
+                              <span className="text-emerald-600 font-extrabold">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={10} />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs border-t border-b border-[#002454]/10 py-2 my-0.5">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase text-[#002454]/70 block mb-0.5">Department</span>
+                      <span className="font-extrabold text-xs text-[#002454] bg-[#002454]/10 border border-[#002454]/20 px-2 py-0.5 rounded inline-block whitespace-normal break-words" title={cand.department}>
+                        {cand.department || "N/A"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase text-[#002454]/70 block mb-0.5">Added Time</span>
+                      <span className="font-bold text-[#002454]">{formatAddedTime(cand.preference_added_at || cand.created_at)}</span>
+                    </div>
+                  </div>
+
+                  {cand.application_comment && (
+                    <div className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 whitespace-normal break-words">
+                      <span className="text-[10px] uppercase font-extrabold block text-amber-900">Comment</span>
+                      {cand.application_comment}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-1">
+                    {cand.cv_url ? (
+                      <a
+                        href={`/api/v1/candidate/cv/${cand.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full sm:w-auto text-center inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#33aeda] hover:bg-[#289ac4] px-4 py-2 text-xs font-black text-white shadow-xs transition-colors"
+                      >
+                        <span>View Candidate CV</span>
+                        <ExternalLink size={13} />
+                      </a>
+                    ) : (
+                      <span className="text-xs font-bold text-slate-400">No CV Attached</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
