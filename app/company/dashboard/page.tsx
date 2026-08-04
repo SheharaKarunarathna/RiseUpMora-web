@@ -63,10 +63,11 @@ export default async function CompanyDashboardOverview(props: {
         pref3Res,
         pref4Res
       ] = await Promise.all([
-        // Slot 1: 10:00 AM – 11:00 AM (Priority: Pref 1 first, ordered by time added)
+        // Slot 1: 10:00 AM – 11:00 AM
         query(
           `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment,
                   tb.slot_number, tb.preference_number, tb.no_timeslot_selected,
+                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
                   COALESCE(tb.created_at, c.created_at) as preference_added_at,
                   c.created_at
            FROM timeslot_bookings tb
@@ -76,10 +77,11 @@ export default async function CompanyDashboardOverview(props: {
            ORDER BY tb.preference_number ASC NULLS LAST, COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
           [companyId]
         ),
-        // Slot 2: 11:00 AM – 12:00 PM (Priority: Pref 1 first, ordered by time added)
+        // Slot 2: 11:00 AM – 12:00 PM
         query(
           `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment,
                   tb.slot_number, tb.preference_number, tb.no_timeslot_selected,
+                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
                   COALESCE(tb.created_at, c.created_at) as preference_added_at,
                   c.created_at
            FROM timeslot_bookings tb
@@ -89,10 +91,11 @@ export default async function CompanyDashboardOverview(props: {
            ORDER BY tb.preference_number ASC NULLS LAST, COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
           [companyId]
         ),
-        // Slot 3: 1:30 PM – 2:30 PM (Priority: Pref 1 first, ordered by time added)
+        // Slot 3: 1:30 PM – 2:30 PM
         query(
           `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment,
                   tb.slot_number, tb.preference_number, tb.no_timeslot_selected,
+                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
                   COALESCE(tb.created_at, c.created_at) as preference_added_at,
                   c.created_at
            FROM timeslot_bookings tb
@@ -102,10 +105,11 @@ export default async function CompanyDashboardOverview(props: {
            ORDER BY tb.preference_number ASC NULLS LAST, COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
           [companyId]
         ),
-        // Slot 4: 2:30 PM – 3:30 PM (Priority: Pref 1 first, ordered by time added)
+        // Slot 4: 2:30 PM – 3:30 PM
         query(
           `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment,
                   tb.slot_number, tb.preference_number, tb.no_timeslot_selected,
+                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
                   COALESCE(tb.created_at, c.created_at) as preference_added_at,
                   c.created_at
            FROM timeslot_bookings tb
@@ -119,6 +123,7 @@ export default async function CompanyDashboardOverview(props: {
         query(
           `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment,
                   tb.slot_number, tb.preference_number, tb.no_timeslot_selected,
+                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
                   COALESCE(tb.created_at, c.created_at) as preference_added_at,
                   c.created_at
            FROM timeslot_bookings tb
@@ -131,7 +136,9 @@ export default async function CompanyDashboardOverview(props: {
         // Preferences 1
         query(
           `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
-                  tb.slot_number, tb.no_timeslot_selected, COALESCE(tb.created_at, c.created_at) as preference_added_at
+                  tb.slot_number, tb.no_timeslot_selected,
+                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
+                  COALESCE(tb.created_at, c.created_at) as preference_added_at
            FROM candidates c
            JOIN users u ON c.user_id = u.id
            LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1::uuid AND tb.preference_number = 1
@@ -142,7 +149,9 @@ export default async function CompanyDashboardOverview(props: {
         // Preferences 2
         query(
           `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
-                  tb.slot_number, tb.no_timeslot_selected, COALESCE(tb.created_at, c.created_at) as preference_added_at
+                  tb.slot_number, tb.no_timeslot_selected,
+                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
+                  COALESCE(tb.created_at, c.created_at) as preference_added_at
            FROM candidates c
            JOIN users u ON c.user_id = u.id
            LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1::uuid AND tb.preference_number = 2
@@ -153,7 +162,9 @@ export default async function CompanyDashboardOverview(props: {
         // Preferences 3
         query(
           `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
-                  tb.slot_number, tb.no_timeslot_selected, COALESCE(tb.created_at, c.created_at) as preference_added_at
+                  tb.slot_number, tb.no_timeslot_selected,
+                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
+                  COALESCE(tb.created_at, c.created_at) as preference_added_at
            FROM candidates c
            JOIN users u ON c.user_id = u.id
            LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1::uuid AND tb.preference_number = 3
@@ -164,7 +175,9 @@ export default async function CompanyDashboardOverview(props: {
         // Preferences 4
         query(
           `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
-                  tb.slot_number, tb.no_timeslot_selected, COALESCE(tb.created_at, c.created_at) as preference_added_at
+                  tb.slot_number, tb.no_timeslot_selected,
+                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
+                  COALESCE(tb.created_at, c.created_at) as preference_added_at
            FROM candidates c
            JOIN users u ON c.user_id = u.id
            LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1::uuid AND tb.preference_number = 4

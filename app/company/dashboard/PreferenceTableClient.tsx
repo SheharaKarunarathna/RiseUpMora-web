@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Building2, ChevronDown, Clock, Tag, ExternalLink, Copy, Check } from "lucide-react";
 
 export default function PreferenceTableClient({
@@ -22,6 +22,65 @@ export default function PreferenceTableClient({
 }) {
   const [slotFilter, setSlotFilter] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [interviewedMap, setInterviewedMap] = useState<Record<string, boolean>>({});
+
+  // Initialize interviewedMap from DB candidates props
+  useEffect(() => {
+    const initialMap: Record<string, boolean> = {};
+    candidates.forEach((cand) => {
+      if (cand.id) {
+        initialMap[cand.id] = Boolean(cand.is_interviewed);
+      }
+    });
+
+    // Also fallback to localStorage for offline / instant cache
+    try {
+      const storageKey = `interviewed_candidates_${title.replace(/\s+/g, "_")}`;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const localData = JSON.parse(saved);
+        Object.assign(initialMap, localData);
+      }
+    } catch (e) {
+      console.error("Failed to load interviewed candidates cache", e);
+    }
+
+    setInterviewedMap(initialMap);
+  }, [candidates, title]);
+
+  const toggleInterviewed = async (candId: string) => {
+    const nextStatus = !interviewedMap[candId];
+
+    // Optimistic UI update
+    setInterviewedMap((prev) => {
+      const next = { ...prev, [candId]: nextStatus };
+      try {
+        const storageKey = `interviewed_candidates_${title.replace(/\s+/g, "_")}`;
+        localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch (e) {
+        console.error("Failed to save interviewed cache", e);
+      }
+      return next;
+    });
+
+    // Database persistence via API
+    try {
+      const response = await fetch("/api/v1/company/interviewed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidateId: candId,
+          isInterviewed: nextStatus,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to save interviewed status to database");
+      }
+    } catch (error) {
+      console.error("Network error saving interviewed status:", error);
+    }
+  };
 
   const filteredCandidates = candidates.filter((cand) => {
     if (!slotFilter) return true;
@@ -129,232 +188,288 @@ export default function PreferenceTableClient({
                     {showPrefBadge && <th className="py-3 px-3 border-r border-[#002454]/15 text-center">Preference</th>}
                     {showSlotFilter && <th className="py-3 px-3 border-r border-[#002454]/15 text-center">Time Slot</th>}
                     <th className="py-3 px-3 border-r border-[#002454]/15 min-w-[120px]">Added Time</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
+                    <th className="py-3 px-4 border-r border-[#002454]/15 text-center">Actions</th>
+                    <th className="py-3 px-3 text-center min-w-[110px]">Interviewed</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y border-t border-[#002454]/15 divide-[#002454]/15">
-                  {sortedCandidates.map((cand, index) => (
-                    <tr
-                      key={cand.id}
-                      className="hover:bg-[#f0f7fc] transition-colors odd:bg-white even:bg-[#fbfdfe]"
-                    >
-                      <td className="py-3.5 px-3 border-r border-[#002454]/15 text-xs font-black text-[#002454]/70 text-center">
-                        #{index + 1}
-                      </td>
-                      <td className="py-3.5 px-3 border-r border-[#002454]/15">
-                        <div className="font-black text-xs text-[#002454] bg-[#002454]/10 border border-[#002454]/20 px-2 py-1 rounded-md inline-block tracking-wide">
-                          {cand.student_id || "N/A"}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 border-r border-[#002454]/15">
-                        {/* Student Name fully visible */}
-                        <div className="font-extrabold text-sm text-[#002454] whitespace-normal break-words">
-                          {cand.candidate_name}
-                        </div>
-                        {/* Student Email fully visible */}
-                        <div className="text-xs text-[#002454]/80 font-semibold whitespace-normal break-words mt-0.5">
-                          {cand.email}
-                        </div>
-                        {/* Mobile Number fully visible + Copy icon button */}
-                        {cand.contact_number && (
-                          <div className="text-xs text-[#002454] mt-1.5 font-extrabold flex items-center gap-2 flex-wrap">
-                            <span className="flex items-center gap-1 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[#002454]">
-                              <span>📞</span>
-                              <span>{cand.contact_number}</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyPhone(cand.id, cand.contact_number)}
-                              title={copiedId === cand.id ? "Copied!" : "Copy mobile number"}
-                              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-black bg-[#002454]/10 hover:bg-[#33aeda] text-[#002454] hover:text-white transition-all border border-[#002454]/20 shadow-xs active:scale-95 cursor-pointer"
-                            >
-                              {copiedId === cand.id ? (
-                                <>
-                                  <Check size={11} className="text-emerald-600" />
-                                  <span className="text-emerald-700 font-extrabold">Copied</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy size={11} />
-                                  <span>Copy</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        )}
-                        {cand.application_comment && (
-                          <div className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 rounded px-2 py-1 mt-2 whitespace-normal break-words">
-                            Comment: {cand.application_comment}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-3 border-r border-[#002454]/15 relative group">
-                        {/* High-Contrast Department Badge + Hover Popup displaying Full Name */}
-                        <div
-                          className="font-extrabold text-xs text-[#002454] bg-[#002454]/10 border border-[#002454]/25 px-2.5 py-1.5 rounded-lg whitespace-normal break-words shadow-xs transition-colors hover:bg-[#33aeda]/20 hover:border-[#33aeda]/50 cursor-pointer"
-                          title={cand.department}
-                        >
-                          {cand.department || "N/A"}
-                        </div>
-
-                        {cand.department && (
-                          <div className="absolute left-2 bottom-full mb-2 hidden group-hover:block z-50 bg-[#002454] text-white text-xs font-black px-3.5 py-2.5 rounded-xl shadow-2xl border-2 border-[#33aeda] pointer-events-none max-w-sm whitespace-normal break-words min-w-[200px]">
-                            <div className="text-[10px] text-[#f6c430] uppercase tracking-wider font-extrabold mb-1 flex items-center gap-1">
-                              <span>🏢</span> <span>Full Department Name</span>
-                            </div>
-                            <div className="text-white text-xs font-black leading-snug">{cand.department}</div>
-                            <div className="absolute left-6 top-full w-0 h-0 border-x-6 border-x-transparent border-t-6 border-t-[#002454]" />
-                          </div>
-                        )}
-                      </td>
-                      {showPrefBadge && (
-                        <td className="py-3.5 px-3 border-r border-[#002454]/15 text-center">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-black shadow-xs ${
-                              cand.preference_number === 1
-                                ? "bg-emerald-100 text-emerald-900 border-2 border-emerald-400"
-                                : "bg-[#f6c430]/25 text-[#7a5c00] border border-[#f6c430]/50"
-                            }`}
-                          >
-                            <Tag size={11} /> Pref {cand.preference_number || (cand.pref_1 === cand.company_id ? 1 : cand.pref_2 === cand.company_id ? 2 : cand.pref_3 === cand.company_id ? 3 : 4)}
-                          </span>
+                  {sortedCandidates.map((cand, index) => {
+                    const isDone = Boolean(interviewedMap[cand.id]);
+                    return (
+                      <tr
+                        key={cand.id}
+                        className={`transition-colors border-b border-[#002454]/15 ${
+                          isDone
+                            ? "bg-slate-200/90 text-slate-700 opacity-80"
+                            : "hover:bg-[#f0f7fc] odd:bg-white even:bg-[#fbfdfe]"
+                        }`}
+                      >
+                        <td className="py-3.5 px-3 border-r border-[#002454]/15 text-xs font-black text-[#002454]/70 text-center">
+                          #{index + 1}
                         </td>
-                      )}
-                      {showSlotFilter && (
-                        <td className="py-3.5 px-3 border-r border-[#002454]/15 text-center">
-                          {cand.slot_number ? (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-[#1688b2]/15 border border-[#1688b2]/30 px-2 py-1 text-[11px] font-extrabold text-[#1688b2]">
-                              <Clock size={11} /> Slot {cand.slot_number}
-                            </span>
-                          ) : (
-                            <span className="text-[11px] font-bold text-amber-700 italic">No slot</span>
+                        <td className="py-3.5 px-3 border-r border-[#002454]/15">
+                          <div className={`font-black text-xs px-2 py-1 rounded-md inline-block tracking-wide ${
+                            isDone
+                              ? "bg-slate-300 text-slate-800 border border-slate-400"
+                              : "bg-[#002454]/10 text-[#002454] border border-[#002454]/20"
+                          }`}>
+                            {cand.student_id || "N/A"}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 border-r border-[#002454]/15">
+                          {/* Student Name fully visible */}
+                          <div className={`font-extrabold text-sm whitespace-normal break-words ${
+                            isDone ? "text-slate-800 line-through decoration-slate-500" : "text-[#002454]"
+                          }`}>
+                            {cand.candidate_name}
+                          </div>
+                          {/* Student Email fully visible */}
+                          <div className="text-xs text-[#002454]/80 font-semibold whitespace-normal break-words mt-0.5">
+                            {cand.email}
+                          </div>
+                          {/* Mobile Number fully visible + Copy icon button */}
+                          {cand.contact_number && (
+                            <div className="text-xs text-[#002454] mt-1.5 font-extrabold flex items-center gap-2 flex-wrap">
+                              <span className="flex items-center gap-1 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-[#002454]">
+                                <span>📞</span>
+                                <span>{cand.contact_number}</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyPhone(cand.id, cand.contact_number)}
+                                title={copiedId === cand.id ? "Copied!" : "Copy mobile number"}
+                                className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-black bg-[#002454]/10 hover:bg-[#33aeda] text-[#002454] hover:text-white transition-all border border-[#002454]/20 shadow-xs active:scale-95 cursor-pointer"
+                              >
+                                {copiedId === cand.id ? (
+                                  <>
+                                    <Check size={11} className="text-emerald-600" />
+                                    <span className="text-emerald-700 font-extrabold">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={11} />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
+                          {cand.application_comment && (
+                            <div className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 rounded px-2 py-1 mt-2 whitespace-normal break-words">
+                              Comment: {cand.application_comment}
+                            </div>
                           )}
                         </td>
-                      )}
-                      <td className="py-3.5 px-3 border-r border-[#002454]/15 text-xs font-bold text-[#002454]/80 whitespace-normal break-words">
-                        {formatAddedTime(cand.preference_added_at || cand.created_at)}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        {cand.cv_url ? (
-                          <a
-                            href={`/api/v1/candidate/cv/${cand.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-[#33aeda] hover:bg-[#289ac4] px-3 py-1.5 text-xs font-black text-white shadow-xs transition-colors"
+                        <td className="py-3.5 px-3 border-r border-[#002454]/15 relative group">
+                          {/* High-Contrast Department Badge + Hover Popup displaying Full Name */}
+                          <div
+                            className={`font-extrabold text-xs px-2.5 py-1.5 rounded-lg whitespace-normal break-words shadow-xs transition-colors cursor-pointer ${
+                              isDone
+                                ? "bg-slate-300 text-slate-800 border border-slate-400"
+                                : "bg-[#002454]/10 text-[#002454] border border-[#002454]/25 hover:bg-[#33aeda]/20 hover:border-[#33aeda]/50"
+                            }`}
+                            title={cand.department}
                           >
-                            <span>CV</span>
-                            <ExternalLink size={12} />
-                          </a>
-                        ) : (
-                          <span className="text-xs font-bold text-slate-300">No CV</span>
+                            {cand.department || "N/A"}
+                          </div>
+
+                          {cand.department && (
+                            <div className="absolute left-2 bottom-full mb-2 hidden group-hover:block z-50 bg-[#002454] text-white text-xs font-black px-3.5 py-2.5 rounded-xl shadow-2xl border-2 border-[#33aeda] pointer-events-none max-w-sm whitespace-normal break-words min-w-[200px]">
+                              <div className="text-[10px] text-[#f6c430] uppercase tracking-wider font-extrabold mb-1 flex items-center gap-1">
+                                <span>🏢</span> <span>Full Department Name</span>
+                              </div>
+                              <div className="text-white text-xs font-black leading-snug">{cand.department}</div>
+                              <div className="absolute left-6 top-full w-0 h-0 border-x-6 border-x-transparent border-t-6 border-t-[#002454]" />
+                            </div>
+                          )}
+                        </td>
+                        {showPrefBadge && (
+                          <td className="py-3.5 px-3 border-r border-[#002454]/15 text-center">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-black shadow-xs ${
+                                cand.preference_number === 1
+                                  ? "bg-emerald-100 text-emerald-900 border-2 border-emerald-400"
+                                  : "bg-[#f6c430]/25 text-[#7a5c00] border border-[#f6c430]/50"
+                              }`}
+                            >
+                              <Tag size={11} /> Pref {cand.preference_number || (cand.pref_1 === cand.company_id ? 1 : cand.pref_2 === cand.company_id ? 2 : cand.pref_3 === cand.company_id ? 3 : 4)}
+                            </span>
+                          </td>
                         )}
-                      </td>
-                    </tr>
-                  ))}
+                        {showSlotFilter && (
+                          <td className="py-3.5 px-3 border-r border-[#002454]/15 text-center">
+                            {cand.slot_number ? (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-[#1688b2]/15 border border-[#1688b2]/30 px-2 py-1 text-[11px] font-extrabold text-[#1688b2]">
+                                <Clock size={11} /> Slot {cand.slot_number}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-bold text-amber-700 italic">No slot</span>
+                            )}
+                          </td>
+                        )}
+                        <td className="py-3.5 px-3 border-r border-[#002454]/15 text-xs font-bold text-[#002454]/80 whitespace-normal break-words">
+                          {formatAddedTime(cand.preference_added_at || cand.created_at)}
+                        </td>
+                        <td className="py-3.5 px-4 border-r border-[#002454]/15 text-center">
+                          {cand.cv_url ? (
+                            <a
+                              href={`/api/v1/candidate/cv/${cand.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-[#33aeda] hover:bg-[#289ac4] px-3 py-1.5 text-xs font-black text-white shadow-xs transition-colors"
+                            >
+                              <span>CV</span>
+                              <ExternalLink size={12} />
+                            </a>
+                          ) : (
+                            <span className="text-xs font-bold text-slate-300">No CV</span>
+                          )}
+                        </td>
+                        {/* Interviewed Checkbox Column (Synced to Database) */}
+                        <td className="py-3.5 px-3 text-center">
+                          <label className="inline-flex items-center justify-center gap-1.5 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={isDone}
+                              onChange={() => toggleInterviewed(cand.id)}
+                              className="w-4 h-4 rounded border-2 border-[#002454]/40 text-[#002454] focus:ring-[#33aeda] cursor-pointer accent-[#002454]"
+                            />
+                            {isDone && (
+                              <span className="text-[10px] font-black text-slate-700 bg-slate-300 border border-slate-400 px-1.5 py-0.5 rounded">
+                                Done ✓
+                              </span>
+                            )}
+                          </label>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile Cards View (Optimized for Small Screens) */}
             <div className="block md:hidden flex flex-col gap-3">
-              {sortedCandidates.map((cand, index) => (
-                <div
-                  key={cand.id}
-                  className="rounded-xl border-2 border-[#002454]/20 p-4 bg-[#fbfdfe] hover:bg-white shadow-xs flex flex-col gap-3 transition-all"
-                >
-                  <div className="flex items-center justify-between border-b border-[#002454]/15 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-[#002454]/60">#{index + 1}</span>
-                      <span className="font-black text-xs text-[#002454] bg-[#002454]/10 border border-[#002454]/20 px-2 py-0.5 rounded tracking-wide">
-                        Ref: {cand.student_id || "N/A"}
-                      </span>
-                    </div>
-
-                    {showPrefBadge && (
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-black ${
-                          cand.preference_number === 1
-                            ? "bg-emerald-100 text-emerald-900 border border-emerald-400"
-                            : "bg-[#f6c430]/25 text-[#7a5c00] border border-[#f6c430]/40"
-                        }`}
-                      >
-                        <Tag size={10} /> Pref {cand.preference_number || 1}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Candidate Name, Email, Mobile - fully visible */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="font-extrabold text-sm text-[#002454] whitespace-normal break-words">
-                      {cand.candidate_name}
-                    </div>
-                    <div className="text-xs text-[#002454]/80 font-semibold whitespace-normal break-words">
-                      {cand.email}
-                    </div>
-                    {cand.contact_number && (
-                      <div className="text-xs text-[#002454] font-extrabold mt-0.5 flex items-center gap-2 flex-wrap">
-                        <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded">
-                          📞 {cand.contact_number}
+              {sortedCandidates.map((cand, index) => {
+                const isDone = Boolean(interviewedMap[cand.id]);
+                return (
+                  <div
+                    key={cand.id}
+                    className={`rounded-xl border-2 border-[#002454]/20 p-4 shadow-xs flex flex-col gap-3 transition-all ${
+                      isDone
+                        ? "bg-slate-200/90 text-slate-700 opacity-80"
+                        : "bg-[#fbfdfe] hover:bg-white"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between border-b border-[#002454]/15 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-[#002454]/60">#{index + 1}</span>
+                        <span className="font-black text-xs text-[#002454] bg-[#002454]/10 border border-[#002454]/20 px-2 py-0.5 rounded tracking-wide">
+                          Ref: {cand.student_id || "N/A"}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyPhone(cand.id, cand.contact_number)}
-                          title={copiedId === cand.id ? "Copied!" : "Copy mobile number"}
-                          className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-black bg-[#002454]/10 hover:bg-[#33aeda] text-[#002454] hover:text-white transition-all border border-[#002454]/20 cursor-pointer"
-                        >
-                          {copiedId === cand.id ? (
-                            <>
-                              <Check size={10} className="text-emerald-600" />
-                              <span className="text-emerald-600 font-extrabold">Copied</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy size={10} />
-                              <span>Copy</span>
-                            </>
-                          )}
-                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Mobile Interviewed Checkbox */}
+                        <label className="flex items-center gap-1.5 cursor-pointer bg-white px-2 py-1 rounded border border-[#002454]/20 shadow-xs">
+                          <input
+                            type="checkbox"
+                            checked={isDone}
+                            onChange={() => toggleInterviewed(cand.id)}
+                            className="w-4 h-4 accent-[#002454] cursor-pointer"
+                          />
+                          <span className={`text-[11px] font-black ${isDone ? "text-slate-700" : "text-[#002454]"}`}>
+                            {isDone ? "Interviewed ✓" : "Interviewed?"}
+                          </span>
+                        </label>
+
+                        {showPrefBadge && (
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-black ${
+                              cand.preference_number === 1
+                                ? "bg-emerald-100 text-emerald-900 border border-emerald-400"
+                                : "bg-[#f6c430]/25 text-[#7a5c00] border border-[#f6c430]/40"
+                            }`}
+                          >
+                            <Tag size={10} /> Pref {cand.preference_number || 1}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Candidate Name, Email, Mobile - fully visible */}
+                    <div className="flex flex-col gap-1.5">
+                      <div className={`font-extrabold text-sm whitespace-normal break-words ${isDone ? "text-slate-800 line-through" : "text-[#002454]"}`}>
+                        {cand.candidate_name}
+                      </div>
+                      <div className="text-xs text-[#002454]/80 font-semibold whitespace-normal break-words">
+                        {cand.email}
+                      </div>
+                      {cand.contact_number && (
+                        <div className="text-xs text-[#002454] font-extrabold mt-0.5 flex items-center gap-2 flex-wrap">
+                          <span className="bg-slate-100 border border-slate-300 px-2 py-0.5 rounded">
+                            📞 {cand.contact_number}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPhone(cand.id, cand.contact_number)}
+                            title={copiedId === cand.id ? "Copied!" : "Copy mobile number"}
+                            className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-black bg-[#002454]/10 hover:bg-[#33aeda] text-[#002454] hover:text-white transition-all border border-[#002454]/20 cursor-pointer"
+                          >
+                            {copiedId === cand.id ? (
+                              <>
+                                <Check size={10} className="text-emerald-600" />
+                                <span className="text-emerald-600 font-extrabold">Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={10} />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs border-t border-b border-[#002454]/10 py-2 my-0.5">
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase text-[#002454]/70 block mb-0.5">Department</span>
+                        <span className="font-extrabold text-xs text-[#002454] bg-[#002454]/10 border border-[#002454]/20 px-2 py-0.5 rounded inline-block whitespace-normal break-words" title={cand.department}>
+                          {cand.department || "N/A"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase text-[#002454]/70 block mb-0.5">Added Time</span>
+                        <span className="font-bold text-[#002454]">{formatAddedTime(cand.preference_added_at || cand.created_at)}</span>
+                      </div>
+                    </div>
+
+                    {cand.application_comment && (
+                      <div className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 whitespace-normal break-words">
+                        <span className="text-[10px] uppercase font-extrabold block text-amber-900">Comment</span>
+                        {cand.application_comment}
                       </div>
                     )}
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs border-t border-b border-[#002454]/10 py-2 my-0.5">
-                    <div>
-                      <span className="text-[10px] font-extrabold uppercase text-[#002454]/70 block mb-0.5">Department</span>
-                      <span className="font-extrabold text-xs text-[#002454] bg-[#002454]/10 border border-[#002454]/20 px-2 py-0.5 rounded inline-block whitespace-normal break-words" title={cand.department}>
-                        {cand.department || "N/A"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-extrabold uppercase text-[#002454]/70 block mb-0.5">Added Time</span>
-                      <span className="font-bold text-[#002454]">{formatAddedTime(cand.preference_added_at || cand.created_at)}</span>
+                    <div className="flex justify-end pt-1">
+                      {cand.cv_url ? (
+                        <a
+                          href={`/api/v1/candidate/cv/${cand.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full sm:w-auto text-center inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#33aeda] hover:bg-[#289ac4] px-4 py-2 text-xs font-black text-white shadow-xs transition-colors"
+                        >
+                          <span>View Candidate CV</span>
+                          <ExternalLink size={13} />
+                        </a>
+                      ) : (
+                        <span className="text-xs font-bold text-slate-400">No CV Attached</span>
+                      )}
                     </div>
                   </div>
-
-                  {cand.application_comment && (
-                    <div className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 whitespace-normal break-words">
-                      <span className="text-[10px] uppercase font-extrabold block text-amber-900">Comment</span>
-                      {cand.application_comment}
-                    </div>
-                  )}
-
-                  <div className="flex justify-end pt-1">
-                    {cand.cv_url ? (
-                      <a
-                        href={`/api/v1/candidate/cv/${cand.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full sm:w-auto text-center inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#33aeda] hover:bg-[#289ac4] px-4 py-2 text-xs font-black text-white shadow-xs transition-colors"
-                      >
-                        <span>View Candidate CV</span>
-                        <ExternalLink size={13} />
-                      </a>
-                    ) : (
-                      <span className="text-xs font-bold text-slate-400">No CV Attached</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
