@@ -1,11 +1,12 @@
 import os
 import smtplib
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 
-# Optional: load environment variables from .env file if python-dotenv is installed
+# Optional: load environment variables from .env file
 try:
     from dotenv import load_dotenv
     env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -13,37 +14,41 @@ try:
 except ImportError:
     pass
 
-# Email configuration matching the Rise Up Mora codebase
-EMAIL_USER = os.getenv("EMAIL_USER", "capriqorn.rx4@gmail.com")
-EMAIL_PASS = os.getenv("EMAIL_PASS", "hfyo xvoe rjem ktpx")
+# Email configuration for dual accounts
+ACCOUNTS = [
+    {
+        "user": os.getenv("EMAIL_USER_1", os.getenv("EMAIL_USER", "capriqorn.rx4@gmail.com")),
+        "pass": os.getenv("EMAIL_PASS_1", os.getenv("EMAIL_PASS", "hfyo xvoe rjem ktpx")),
+        "name": "Sender 1"
+    },
+    {
+        "user": os.getenv("EMAIL_USER_2", os.getenv("EMAIL_USER", "capriqorn.rx4@gmail.com")),
+        "pass": os.getenv("EMAIL_PASS_2", os.getenv("EMAIL_PASS", "hfyo xvoe rjem ktpx")),
+        "name": "Sender 2"
+    }
+]
+
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
 SENDER_NAME = "Rise Up Mora"
 
-# List of target recipients
-RECIPIENTS = [
-    # Add your list of email addresses here
-    "example1@gmail.com",
-    "example2@gmail.com",
-]
-
-DEFAULT_SUBJECT = "Important Update from Rise Up Mora"
+DEFAULT_SUBJECT = "Companies Available to Select Now! Reserve Your Spot - Rise Up Mora"
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Rise Up Mora Update</title>
+  <title>Company Selection Open Now</title>
   <style>
-    body {{ font-family: 'Inter', Arial, sans-serif; background-color: #f8fcfe; margin: 0; padding: 0; }}
-    .container {{ max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,36,84,0.08); border: 1px solid rgba(0,36,84,0.1); }}
-    .header {{ background-color: #002454; padding: 32px 24px; text-align: center; }}
-    .header h1 {{ color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }}
-    .header h1 span {{ color: #f6c430; }}
-    .content {{ padding: 36px 32px; color: #333333; }}
-    .content h2 {{ color: #002454; margin-top: 0; font-size: 20px; font-weight: 800; }}
-    .content p {{ line-height: 1.6; margin-bottom: 20px; color: #4a5568; }}
-    .footer {{ background-color: #f8fcfe; padding: 24px; text-align: center; font-size: 13px; color: #718096; border-top: 1px solid rgba(0,36,84,0.05); }}
+    body { font-family: 'Inter', Arial, sans-serif; background-color: #f8fcfe; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,36,84,0.08); border: 1px solid rgba(0,36,84,0.1); }
+    .header { background-color: #002454; padding: 32px 24px; text-align: center; }
+    .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+    .header h1 span { color: #f6c430; }
+    .content { padding: 36px 32px; color: #333333; }
+    .content h2 { color: #002454; margin-top: 0; font-size: 20px; font-weight: 800; }
+    .content p { line-height: 1.6; margin-bottom: 20px; color: #4a5568; }
+    .footer { background-color: #f8fcfe; padding: 24px; text-align: center; font-size: 13px; color: #718096; border-top: 1px solid rgba(0,36,84,0.05); }
   </style>
 </head>
 <body>
@@ -52,9 +57,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <h1>Rise Up <span>Mora</span></h1>
     </div>
     <div class="content">
-      <h2>Hello Candidate,</h2>
-      <p>This is an automated notification regarding your participation in <strong>Rise Up Mora</strong>.</p>
-      <p>Please check your candidate dashboard regularly for updates regarding time slots and mock interview schedules.</p>
+      <h2>Company Selection is Now Open!</h2>
+      <p>Hello Candidate,</p>
+      <div style="background-color: #fefce8; border-left: 4px solid #f6c430; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px;">
+        <p style="margin: 0; color: #744210; font-weight: 700; font-size: 15px;">
+          🚀 Companies are available to select now! Quickly reserve your spot. Seats are limited!
+        </p>
+      </div>
+      <p>Log in to your candidate dashboard to rank your preferred companies and select your time slots before capacity is reached.</p>
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="http://localhost:3000/candidate/application" style="background-color: #f6c430; color: #002454; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 800; display: inline-block; font-size: 16px;">Select Companies &amp; Time Slots</a>
+      </div>
     </div>
     <div class="footer">
       &copy; 2026 Rise Up Mora. All rights reserved.
@@ -64,71 +77,95 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </html>
 """
 
-def send_bulk_emails(recipients, subject=DEFAULT_SUBJECT, html_content=HTML_TEMPLATE, delay_seconds=1.0):
+def send_single_email(account_info, recipient, idx, total_count, subject=DEFAULT_SUBJECT, html_content=HTML_TEMPLATE):
     """
-    Sends email to a list of recipients using the Gmail SMTP configuration from .env
+    Connects to SMTP and sends one email using the assigned account info.
     """
-    if not EMAIL_USER or not EMAIL_PASS:
-        print("❌ Error: EMAIL_USER or EMAIL_PASS environment variables are not set.")
-        return
+    user = account_info["user"]
+    pwd = account_info["pass"]
+    account_name = account_info["name"]
 
-    print(f"📧 Initializing SMTP connection to {SMTP_HOST}:{SMTP_PORT} using account {EMAIL_USER}...")
-    
     try:
-        # Establish TLS SMTP Connection
-        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10)
         server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASS)
-        print("✅ SMTP Server Authentication Successful!\n")
+        server.login(user, pwd)
 
-        success_count = 0
-        failure_count = 0
+        msg = MIMEMultipart("alternative")
+        msg["From"] = f'"{SENDER_NAME}" <{user}>'
+        msg["To"] = recipient
+        msg["Subject"] = subject
+        msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-        for idx, recipient in enumerate(recipients, start=1):
-            recipient = recipient.strip()
-            if not recipient:
-                continue
-
-            try:
-                # Create MIME Email Message
-                msg = MIMEMultipart("alternative")
-                msg["From"] = f'"{SENDER_NAME}" <{EMAIL_USER}>'
-                msg["To"] = recipient
-                msg["Subject"] = subject
-
-                # Attach HTML Content
-                html_part = MIMEText(html_content, "html", "utf-8")
-                msg.attach(html_part)
-
-                # Send Email
-                server.sendmail(EMAIL_USER, recipient, msg.as_string())
-                print(f"[{idx}/{len(recipients)}] 🚀 Email sent successfully to: {recipient}")
-                success_count += 1
-
-                # Rate limiting delay
-                if delay_seconds > 0 and idx < len(recipients):
-                    time.sleep(delay_seconds)
-
-            except Exception as mail_err:
-                print(f"[{idx}/{len(recipients)}] ❌ Failed to send email to {recipient}: {mail_err}")
-                failure_count += 1
-
+        server.sendmail(user, recipient, msg.as_string())
         server.quit()
-        print(f"\n✨ Bulk Email Sending Complete! Success: {success_count}, Failed: {failure_count}")
 
-    except Exception as server_err:
-        print(f"❌ Connection or Authentication Error: {server_err}")
+        print(f"[{idx}/{total_count}] 🚀 [{account_name} ({user})] Email sent to: {recipient}")
+        return True
+    except Exception as err:
+        print(f"[{idx}/{total_count}] ❌ [{account_name} ({user})] Failed to send to {recipient}: {err}")
+        return False
+
+def send_bulk_emails(recipients, subject=DEFAULT_SUBJECT, html_content=HTML_TEMPLATE):
+    """
+    Sends emails in batches of 10 (5 via Account 1, 5 via Account 2) using thread pool.
+    """
+    print("=" * 70)
+    print("  RiseUpMora — High-Speed Dual-Account Python Email Sender")
+    print("=" * 70)
+    print(f"  Account 1 : {ACCOUNTS[0]['user']}")
+    print(f"  Account 2 : {ACCOUNTS[1]['user']}")
+    print(f"  Batching  : 5 (Account 1) + 5 (Account 2) = 10 parallel emails / batch")
+    print("=" * 70 + "\n")
+
+    total_count = len(recipients)
+    success_count = 0
+    failure_count = 0
+    start_time = time.time()
+
+    batch_size = 10
+
+    for i in range(0, total_count, batch_size):
+        chunk = recipients[i:i + batch_size]
+        group1 = chunk[0:5] # Sent via Account 1
+        group2 = chunk[5:10] # Sent via Account 2
+
+        print(f"\n📦 Processing Batch [{i + 1} - {min(i + batch_size, total_count)} / {total_count}]...")
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = []
+            
+            # Dispatch group 1 using Account 1
+            for g_idx, rec in enumerate(group1):
+                futures.append(executor.submit(send_single_email, ACCOUNTS[0], rec.strip(), i + g_idx + 1, total_count, subject, html_content))
+
+            # Dispatch group 2 using Account 2
+            for g_idx, rec in enumerate(group2):
+                futures.append(executor.submit(send_single_email, ACCOUNTS[1], rec.strip(), i + 5 + g_idx + 1, total_count, subject, html_content))
+
+            for future in as_completed(futures):
+                if future.result():
+                    success_count += 1
+                else:
+                    failure_count += 1
+
+        if i + batch_size < total_count:
+            time.sleep(0.5)
+
+    duration = round(time.time() - start_time, 1)
+
+    print("\n" + "=" * 70)
+    print("  BULK EMAIL SENDING COMPLETE")
+    print("=" * 70)
+    print(f"  Total Recipients : {total_count}")
+    print(f"  Successfully Sent: {success_count}")
+    print(f"  Failed           : {failure_count}")
+    print(f"  Time Elapsed     : {duration} seconds")
+    print("=" * 70 + "\n")
 
 if __name__ == "__main__":
-    # Example usage:
-    # Set target recipients list below
-    target_recipients = [
+    sample_recipients = [
         "kalharaj.23@cse.mrt.ac.lk",
-        # "student2@cse.mrt.ac.lk",
+        "kalharajay@gmail.com",
+        "kisajab72@gmail.com",
     ]
-    
-    send_bulk_emails(
-        recipients=target_recipients,
-        subject="Important Notice - Rise Up Mora",
-        html_content=HTML_TEMPLATE
-    )
+    send_bulk_emails(sample_recipients)

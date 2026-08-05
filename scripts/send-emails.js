@@ -1,17 +1,55 @@
+/**
+ * scripts/send-emails.js
+ *
+ * Fast Dual-Account Parallel Bulk Email Sender for Rise Up Mora.
+ * Uses 2 sender accounts simultaneously:
+ *   - 5 emails sent via Sender Account 1
+ *   - 5 emails sent via Sender Account 2
+ *   = Total 10 emails sent concurrently per batch.
+ *
+ * Environment Variables (.env):
+ *   EMAIL_USER_1 / EMAIL_PASS_1 (or default EMAIL_USER / EMAIL_PASS)
+ *   EMAIL_USER_2 / EMAIL_PASS_2
+ *
+ * Usage:
+ *   node scripts/send-emails.js
+ */
+
 require("dotenv").config();
 const nodemailer = require("nodemailer");
+const { Pool } = require("pg");
 
-// Email transporter using codebase credentials from .env
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER || "capriqorn.rx4@gmail.com",
-    pass: process.env.EMAIL_PASS || "hfyo xvoe rjem ktpx",
+// Configured Sender Accounts (loaded from .env)
+const ACCOUNTS = [
+  {
+    user: process.env.EMAIL_USER_1 || process.env.EMAIL_USER || "capriqorn.rx4@gmail.com",
+    pass: process.env.EMAIL_PASS_1 || process.env.EMAIL_PASS || "hfyo xvoe rjem ktpx",
+    name: "Sender 1",
   },
-});
+  {
+    user: process.env.EMAIL_USER_2 || process.env.EMAIL_USER || "capriqorn.rx4@gmail.com",
+    pass: process.env.EMAIL_PASS_2 || process.env.EMAIL_PASS || "hfyo xvoe rjem ktpx",
+    name: "Sender 2",
+  },
+];
 
-// List of recipient email addresses
-const RECIPIENTS = [
+// Create Nodemailer transporters for both accounts
+const transporters = ACCOUNTS.map((acc) =>
+  nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: acc.user,
+      pass: acc.pass,
+    },
+    // Pool connections for maximum throughput
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+  })
+);
+
+// Fallback recipient list (overridden if querying from DB)
+const SAMPLE_RECIPIENTS = [
   "kisajab72@gmail.com",
   "kalharajay@gmail.com",
   "kalharaj.23@cse.mrt.ac.lk",
@@ -63,39 +101,117 @@ const HTML_TEMPLATE = `<!DOCTYPE html>
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Sends a single email using a specific account transporter.
+ */
+async function sendSingleEmail(transporterIdx, recipient, index, total) {
+  const account = ACCOUNTS[transporterIdx];
+  const transporter = transporters[transporterIdx];
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"Rise Up Mora" <${account.user}>`,
+      to: recipient,
+      subject: SUBJECT,
+      html: HTML_TEMPLATE,
+    });
+    console.log(
+      `[${index + 1}/${total}] 🚀 [${account.name} (${account.user})] Sent to: ${recipient} (ID: ${info.messageId})`
+    );
+    return { success: true, recipient };
+  } catch (err) {
+    console.error(
+      `[${index + 1}/${total}] ❌ [${account.name} (${account.user})] Failed to send to ${recipient}: ${err.message}`
+    );
+    return { success: false, recipient, error: err.message };
+  }
+}
+
+/**
+ * Main function: fetches recipients and sends 10 at a time (5 via Account 1 + 5 via Account 2)
+ */
 async function sendBulkEmails() {
-  const emailUser = process.env.EMAIL_USER || "capriqorn.rx4@gmail.com";
-  console.log(`\n📧 Sending bulk emails via ${emailUser}...`);
+  console.log("=".repeat(70));
+  console.log("  RiseUpMora — High-Speed Dual-Account Email Sender");
+  console.log("=".repeat(70));
+  console.log(`  Account 1 : ${ACCOUNTS[0].user}`);
+  console.log(`  Account 2 : ${ACCOUNTS[1].user}`);
+  console.log(`  Batching  : 5 (Account 1) + 5 (Account 2) = 10 parallel emails / batch`);
+  console.log("=".repeat(70));
 
-  let successCount = 0;
-  let failureCount = 0;
+  let recipients = [...SAMPLE_RECIPIENTS];
 
-  for (let i = 0; i < RECIPIENTS.length; i++) {
-    const recipient = RECIPIENTS[i].trim();
-    if (!recipient) continue;
-
+  // Optional: Attempt to load candidate emails from DB if DATABASE_URL exists
+  if (process.env.DATABASE_URL) {
     try {
-      const info = await transporter.sendMail({
-        from: `"Rise Up Mora" <${emailUser}>`,
-        to: recipient,
-        subject: SUBJECT,
-        html: HTML_TEMPLATE,
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false },
       });
-
-      console.log(`[${i + 1}/${RECIPIENTS.length}] 🚀 Email sent to: ${recipient} (Message ID: ${info.messageId})`);
-      successCount++;
-
-      // 1-second delay between emails
-      if (i < RECIPIENTS.length - 1) {
-        await sleep(1000);
+      const { rows } = await pool.query(
+        "SELECT DISTINCT email FROM users WHERE role = 'candidate' AND email IS NOT NULL AND email != ''"
+      );
+      if (rows.length > 0) {
+        recipients = rows.map((r) => r.email.trim());
+        console.log(`\n📋 Loaded ${recipients.length} candidate recipient email(s) from database.\n`);
       }
+      await pool.end();
     } catch (err) {
-      console.error(`[${i + 1}/${RECIPIENTS.length}] ❌ Failed to send email to ${recipient}:`, err.message);
-      failureCount++;
+      console.log(`\n⚠️  Database query skipped (${err.message}). Using sample recipient list.\n`);
     }
   }
 
-  console.log(`\n✨ Bulk email sending completed! Success: ${successCount}, Failed: ${failureCount}\n`);
+  let totalSuccess = 0;
+  let totalFailed = 0;
+  const startTime = Date.now();
+
+  const BATCH_SIZE = 10;
+
+  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+    const chunk = recipients.slice(i, i + BATCH_SIZE);
+    
+    // Split batch into 5 + 5
+    const group1 = chunk.slice(0, 5); // Sent via Account 1
+    const group2 = chunk.slice(5, 10); // Sent via Account 2
+
+    console.log(`\n📦 Processing Batch [${i + 1} - ${Math.min(i + BATCH_SIZE, recipients.length)} / ${recipients.length}]...`);
+
+    // Prepare 5 promises for Account 1 and 5 promises for Account 2
+    const promisesGroup1 = group1.map((rec, idx) =>
+      sendSingleEmail(0, rec, i + idx, recipients.length)
+    );
+
+    const promisesGroup2 = group2.map((rec, idx) =>
+      sendSingleEmail(1, rec, i + 5 + idx, recipients.length)
+    );
+
+    // Run all 10 parallel email dispatches simultaneously
+    const results = await Promise.all([...promisesGroup1, ...promisesGroup2]);
+
+    results.forEach((res) => {
+      if (res.success) totalSuccess++;
+      else totalFailed++;
+    });
+
+    // Small 500ms delay between batches to respect SMTP connection limits
+    if (i + BATCH_SIZE < recipients.length) {
+      await sleep(500);
+    }
+  }
+
+  // Close SMTP pools
+  transporters.forEach((t) => t.close());
+
+  const durationSec = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  console.log("\n" + "=".repeat(70));
+  console.log("  BULK EMAIL SENDING COMPLETE");
+  console.log("=".repeat(70));
+  console.log(`  Total Recipients : ${recipients.length}`);
+  console.log(`  Successfully Sent: ${totalSuccess}`);
+  console.log(`  Failed           : ${totalFailed}`);
+  console.log(`  Time Elapsed     : ${durationSec} seconds`);
+  console.log("=".repeat(70) + "\n");
 }
 
-sendBulkEmails();
+sendBulkEmails().catch(console.error);
