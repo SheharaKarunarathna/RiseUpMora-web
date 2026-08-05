@@ -117,7 +117,7 @@ export default async function PanelistDashboardPage() {
             subtitle={`All unique candidates who selected ${panelist.company_name} as a preference`}
             candidates={unitedCandidates}
             showSlotFilter={false}
-            showPrefBadge={true}
+            showPrefBadge={false}
             showEvaluate={true}
           />
         </div>
