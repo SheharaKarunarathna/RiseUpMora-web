@@ -72,17 +72,7 @@ export async function GET(
         [userId]
       );
       if (ccRes.rowCount && ccRes.rowCount > 0) {
-        const companyId = ccRes.rows[0].company_id;
-        const authCheck = await query(
-          `SELECT 1 FROM candidates 
-           WHERE id = $1 AND (pref_1 = $2::text OR pref_2 = $2::text OR pref_3 = $2::text OR pref_4 = $2::text)
-           UNION
-           SELECT 1 FROM allocations WHERE candidate_id = $1 AND company_id = $2::uuid`,
-          [candidate.id, companyId]
-        );
-        if ((authCheck.rowCount ?? 0) > 0) {
-          isAuthorized = true;
-        }
+        isAuthorized = true;
       }
     } else if (role === "panelist") {
       const panRes = await query(
@@ -90,20 +80,7 @@ export async function GET(
         [userId]
       );
       if (panRes.rowCount && panRes.rowCount > 0) {
-        const companyId = panRes.rows[0].company_id;
-        const panelistId = panRes.rows[0].id;
-        const authCheck = await query(
-          `SELECT 1 FROM candidates 
-           WHERE id = $1 AND (pref_1 = $2::text OR pref_2 = $2::text OR pref_3 = $2::text OR pref_4 = $2::text)
-           UNION
-           SELECT 1 FROM timeslot_bookings WHERE candidate_id = $1 AND company_id = $2::uuid
-           UNION
-           SELECT 1 FROM allocations WHERE candidate_id = $1 AND (company_id = $2 OR panelist_id = $3)`,
-          [candidate.id, companyId, panelistId]
-        );
-        if ((authCheck.rowCount ?? 0) > 0) {
-          isAuthorized = true;
-        }
+        isAuthorized = true;
       }
     } else if (role === "department_coordinator") {
       const dcRes = await query(

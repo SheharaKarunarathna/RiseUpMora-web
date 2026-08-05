@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { query } from "@/lib/db";
 import { fetchCompanyCandidates } from "@/lib/company-data";
 import PreferenceTableClient from "@/app/company/dashboard/PreferenceTableClient";
-import { Building2 } from "lucide-react";
+import { Building2, CheckCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +42,7 @@ export default async function PanelistDashboardPage() {
     slot4Candidates,
     unassignedCandidates,
     totalCandidateCount,
+    totalInterviewedCount,
   } = await fetchCompanyCandidates(panelist.company_id);
 
   return (
@@ -73,7 +74,7 @@ export default async function PanelistDashboardPage() {
         )}
       </div>
 
-      {/* Overview Stat Card */}
+      {/* Overview Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="rounded-2xl border border-[#002454]/10 bg-white p-6 shadow-sm flex items-center justify-between">
           <div>
@@ -86,6 +87,20 @@ export default async function PanelistDashboardPage() {
           </div>
           <div className="p-3 rounded-xl bg-[#33aeda]/10 text-[#1688b2]">
             <Building2 size={24} />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#002454]/10 bg-white p-6 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-wider text-[#002454]/50">
+              Total Interviewed
+            </p>
+            <p className="mt-2 text-3xl font-extrabold text-emerald-600">
+              {totalInterviewedCount}
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
+            <CheckCircle size={24} />
           </div>
         </div>
       </div>

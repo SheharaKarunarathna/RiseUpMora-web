@@ -191,6 +191,20 @@ export async function fetchCompanyCandidates(companyId: string) {
     slot4Candidates.length +
     unassignedCandidates.length;
 
+  const interviewedCandidateSet = new Set(
+    [
+      ...slot1Candidates,
+      ...slot2Candidates,
+      ...slot3Candidates,
+      ...slot4Candidates,
+      ...unassignedCandidates,
+    ]
+      .filter((c) => c.is_interviewed)
+      .map((c) => c.id)
+  );
+
+  const totalInterviewedCount = interviewedCandidateSet.size;
+
   return {
     slot1Candidates,
     slot2Candidates,
@@ -202,5 +216,6 @@ export async function fetchCompanyCandidates(companyId: string) {
     pref3Candidates,
     pref4Candidates,
     totalCandidateCount,
+    totalInterviewedCount,
   };
 }
