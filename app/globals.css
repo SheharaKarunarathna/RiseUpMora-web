@@ -671,7 +671,7 @@ html {
   width: min(100% - 3rem, 76rem);
   min-height: calc(100vh - 6.5rem);
   margin-inline: auto;
-  padding-top: clamp(1rem, 2vw, 5rem);
+  padding-top: clamp(1rem, 1vw, 5rem);
   padding-bottom: clamp(4rem, 8vw, 8rem);
   align-items: center;
   gap: clamp(3rem, 8vw, 7rem);
@@ -4228,6 +4228,12 @@ html {
     font-size: 0.68rem;
   }
 
+  .interview-schedule__notice {
+    margin-top: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.72rem;
+  }
+
   /* Collapse the company guide from a table into stacked cards, using the
      data-label on each cell as the row heading. */
   .company-guide {
@@ -5321,6 +5327,27 @@ html {
   font-size: 0.72rem;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.interview-schedule__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.7rem 0 0;
+  border: 1px solid #fde68a;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.interview-schedule__notice svg {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  color: #b45309;
 }
 
 /* ── Company Reference Guide ── */

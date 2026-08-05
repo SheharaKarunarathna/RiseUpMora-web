@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CalendarClock } from "lucide-react";
+import { AlertTriangle, Building2, CalendarClock } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 
@@ -95,6 +95,12 @@ export default function CandidateInterviewSchedule({
           </li>
         ))}
       </ul>
+
+      <p className="interview-schedule__notice">
+        <AlertTriangle size={14} aria-hidden="true" />
+        Your time slot has been booked. Preference and time changes made after this point will
+        not be considered.
+      </p>
     </section>
   );
 }
