@@ -29,7 +29,7 @@ export default function HeroCandidateAction() {
       </div>
       <Link
         className="hero-preference-action"
-        href="/candidate/dashboard#dashboard-preferences-title"
+        href="/candidate/dashboard"
       >
         <Building2 size={22} aria-hidden="true" />
         Preference Selection

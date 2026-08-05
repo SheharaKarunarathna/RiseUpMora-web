@@ -89,7 +89,7 @@ export async function GET() {
            (c.pref_2 IS NOT NULL AND c.pref_2 != '' AND c.pref_2::text = comp.id::text) OR 
            (c.pref_3 IS NOT NULL AND c.pref_3 != '' AND c.pref_3::text = comp.id::text) OR 
            (c.pref_4 IS NOT NULL AND c.pref_4 != '' AND c.pref_4::text = comp.id::text) OR 
-           a.id IS NOT NULL
+           (a.id IS NOT NULL AND f.id IS NOT NULL)
          )
          ORDER BY pref_rank ASC NULLS LAST`,
         [session.user.id]
@@ -406,6 +406,24 @@ export async function POST(request: Request) {
         "DELETE FROM timeslot_bookings WHERE candidate_id = $1",
         [candidate.id],
       );
+
+      // Delete allocations for companies no longer in preferences (unless feedback already exists)
+      if (selectedPrefs.length > 0) {
+        await client.query(
+          `DELETE FROM allocations 
+           WHERE candidate_id = $1 
+             AND NOT (company_id = ANY($2::uuid[]))
+             AND NOT EXISTS (SELECT 1 FROM feedback f WHERE f.candidate_id = allocations.candidate_id AND f.company_id = allocations.company_id)`,
+          [candidate.id, selectedPrefs],
+        );
+      } else {
+        await client.query(
+          `DELETE FROM allocations 
+           WHERE candidate_id = $1
+             AND NOT EXISTS (SELECT 1 FROM feedback f WHERE f.candidate_id = allocations.candidate_id AND f.company_id = allocations.company_id)`,
+          [candidate.id],
+        );
+      }
 
       // Insert new bookings for pref 1 & 2 — one row per ticked slot (no capacity limit)
       const timeslotInserts: Array<{ companyId: string; slotNumber: number; prefNumber: number }> = [];
