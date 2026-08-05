@@ -7,8 +7,7 @@ export const runtime = "nodejs";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export function getSlotStatus(filled: number, max: number): "available" | "overcrowded" | "filled" {
-  if (filled >= max) return "filled";
+export function getSlotStatus(filled: number, max: number): "available" | "overcrowded" {
   if (max - filled <= 2) return "overcrowded";
   return "available";
 }

@@ -168,9 +168,6 @@ export default function Home() {
             </p>
             <div className="hero-actions">
               <HeroCandidateAction />
-              <a className="hero-secondary" href="#timeline">
-                View timeline
-              </a>
             </div>
           </div>
 

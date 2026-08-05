@@ -133,30 +133,35 @@ export default async function CompanyDashboardOverview(props: {
            ORDER BY tb.preference_number ASC NULLS LAST, COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
           [companyId]
         ),
-        // Preferences 1
+        // Preferences 1 — a candidate can now have several ticked slots for this
+        // preference, so slot numbers are aggregated into one row per candidate.
         query(
           `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
-                  tb.slot_number, tb.no_timeslot_selected,
-                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
-                  COALESCE(tb.created_at, c.created_at) as preference_added_at
+                  array_agg(tb.slot_number ORDER BY tb.slot_number) FILTER (WHERE tb.slot_number IS NOT NULL) as slot_numbers,
+                  bool_or(COALESCE(tb.no_timeslot_selected, FALSE)) as no_timeslot_selected,
+                  bool_or(COALESCE(tb.is_interviewed, c.is_interviewed, FALSE)) as is_interviewed,
+                  MIN(COALESCE(tb.created_at, c.created_at)) as preference_added_at
            FROM candidates c
            JOIN users u ON c.user_id = u.id
            LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1::uuid AND tb.preference_number = 1
            WHERE c.pref_1 = $1::text
-           ORDER BY COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
+           GROUP BY c.id, u.name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
+           ORDER BY MIN(COALESCE(tb.created_at, c.created_at)) ASC, c.student_id ASC NULLS LAST`,
           [companyId]
         ),
-        // Preferences 2
+        // Preferences 2 — same aggregation as Preference 1
         query(
           `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
-                  tb.slot_number, tb.no_timeslot_selected,
-                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
-                  COALESCE(tb.created_at, c.created_at) as preference_added_at
+                  array_agg(tb.slot_number ORDER BY tb.slot_number) FILTER (WHERE tb.slot_number IS NOT NULL) as slot_numbers,
+                  bool_or(COALESCE(tb.no_timeslot_selected, FALSE)) as no_timeslot_selected,
+                  bool_or(COALESCE(tb.is_interviewed, c.is_interviewed, FALSE)) as is_interviewed,
+                  MIN(COALESCE(tb.created_at, c.created_at)) as preference_added_at
            FROM candidates c
            JOIN users u ON c.user_id = u.id
            LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1::uuid AND tb.preference_number = 2
            WHERE c.pref_2 = $1::text
-           ORDER BY COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
+           GROUP BY c.id, u.name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
+           ORDER BY MIN(COALESCE(tb.created_at, c.created_at)) ASC, c.student_id ASC NULLS LAST`,
           [companyId]
         ),
         // Preferences 3

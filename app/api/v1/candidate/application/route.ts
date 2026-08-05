@@ -24,6 +24,14 @@ async function getCandidateSession() {
   return session;
 }
 
+// Tolerates the pre-migration schema where pref_1_timeslot/pref_2_timeslot
+// were a single INT rather than INT[], so the API never sends a bare number.
+function normalizeTimeslots(value: unknown): number[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "number") return [value];
+  return [];
+}
+
 export async function GET() {
   const session = await getCandidateSession();
   if (!session) {
@@ -107,8 +115,8 @@ export async function GET() {
       pref_3: string | null;
       pref_4: string | null;
       application_comment: string | null;
-      pref_1_timeslot: number | null;
-      pref_2_timeslot: number | null;
+      pref_1_timeslot: unknown;
+      pref_2_timeslot: unknown;
     };
 
     // Fetch slot counts for companies in preferences (if any)
@@ -152,8 +160,8 @@ export async function GET() {
           candidate.pref_4,
         ],
         comment: candidate.application_comment ?? "",
-        pref1Timeslot: candidate.pref_1_timeslot,
-        pref2Timeslot: candidate.pref_2_timeslot,
+        pref1Timeslot: normalizeTimeslots(candidate.pref_1_timeslot),
+        pref2Timeslot: normalizeTimeslots(candidate.pref_2_timeslot),
       },
       companies: companyResult.rows,
       interviews: interviewResult.rows,
@@ -195,8 +203,13 @@ export async function POST(request: Request) {
     ? body.preferences.map((value) => (typeof value === "string" ? value.trim() : ""))
     : [];
   const comment = typeof body.comment === "string" ? body.comment.trim() : "";
-  const pref1Timeslot = typeof body.pref1Timeslot === "number" && [1, 2, 3, 4].includes(body.pref1Timeslot) ? body.pref1Timeslot : null;
-  const pref2Timeslot = typeof body.pref2Timeslot === "number" && [1, 2, 3, 4].includes(body.pref2Timeslot) ? body.pref2Timeslot : null;
+  const parseTimeslots = (value: unknown): number[] => {
+    if (!Array.isArray(value)) return [];
+    const valid = value.filter((v): v is number => typeof v === "number" && [1, 2, 3, 4].includes(v));
+    return Array.from(new Set(valid)).sort((a, b) => a - b);
+  };
+  const pref1Timeslot = parseTimeslots(body.pref1Timeslot);
+  const pref2Timeslot = parseTimeslots(body.pref2Timeslot);
 
   // Normalize preferences to array of 4 string | null elements
   const preferences: Array<string | null> = Array.from({ length: 4 }, (_, index) => {
@@ -267,15 +280,15 @@ export async function POST(request: Request) {
   };
 
   // Validate timeslots: required when a company is selected for pref 1 or 2
-  if (preferences[0] && !pref1Timeslot) {
+  if (preferences[0] && pref1Timeslot.length === 0) {
     return NextResponse.json(
-      { error: "Please select a time slot for Preference 1" },
+      { error: "Please select at least one time slot for Preference 1" },
       { status: 400 },
     );
   }
-  if (preferences[1] && !pref2Timeslot) {
+  if (preferences[1] && pref2Timeslot.length === 0) {
     return NextResponse.json(
-      { error: "Please select a time slot for Preference 2" },
+      { error: "Please select at least one time slot for Preference 2" },
       { status: 400 },
     );
   }
@@ -393,21 +406,24 @@ export async function POST(request: Request) {
         [candidate.id],
       );
 
-      // Validate capacity and insert new bookings for pref 1 & 2
+      // Insert new bookings for pref 1 & 2 — one row per ticked slot (no capacity limit)
       const timeslotInserts: Array<{ companyId: string; slotNumber: number; prefNumber: number }> = [];
-      if (preferences[0] && pref1Timeslot) {
-        timeslotInserts.push({ companyId: preferences[0], slotNumber: pref1Timeslot, prefNumber: 1 });
+      if (preferences[0]) {
+        for (const slot of pref1Timeslot) {
+          timeslotInserts.push({ companyId: preferences[0], slotNumber: slot, prefNumber: 1 });
+        }
       }
-      if (preferences[1] && pref2Timeslot) {
-        timeslotInserts.push({ companyId: preferences[1], slotNumber: pref2Timeslot, prefNumber: 2 });
+      if (preferences[1]) {
+        for (const slot of pref2Timeslot) {
+          timeslotInserts.push({ companyId: preferences[1], slotNumber: slot, prefNumber: 2 });
+        }
       }
 
       for (const ins of timeslotInserts) {
-        // Check capacity with row lock
+        // Row lock to serialize concurrent increments
         const countResult = await client.query(
-          `SELECT csc.filled_count, csc.max_limit, c.is_it
+          `SELECT csc.filled_count
            FROM company_slot_counts csc
-           JOIN companies c ON c.id = csc.company_id
            WHERE csc.company_id = $1 AND csc.slot_number = $2
            FOR UPDATE`,
           [ins.companyId, ins.slotNumber],
@@ -417,16 +433,6 @@ export async function POST(request: Request) {
           await client.query("ROLLBACK");
           return NextResponse.json(
             { error: "Slot data not found for the selected company" },
-            { status: 400 },
-          );
-        }
-
-        const { filled_count, max_limit, is_it } = countResult.rows[0];
-        const max = parseInt(max_limit ?? (is_it ? 10 : 15));
-        if (parseInt(filled_count) >= max) {
-          await client.query("ROLLBACK");
-          return NextResponse.json(
-            { error: `Time slot ${ins.slotNumber} for Preference ${ins.prefNumber} is fully booked. Please select a different slot.` },
             { status: 400 },
           );
         }
@@ -482,8 +488,8 @@ export async function POST(request: Request) {
           preferences[2],
           preferences[3],
           comment || null,
-          preferences[0] ? pref1Timeslot : null,
-          preferences[1] ? pref2Timeslot : null,
+          preferences[0] && pref1Timeslot.length > 0 ? pref1Timeslot : null,
+          preferences[1] && pref2Timeslot.length > 0 ? pref2Timeslot : null,
           session.user.id,
         ],
       );
@@ -507,7 +513,7 @@ export async function POST(request: Request) {
                 rank: index + 1,
                 companyName: comp?.name || "Company",
                 logoUrl: comp?.logo_url || null,
-                slotNumber: index === 0 ? pref1Timeslot : index === 1 ? pref2Timeslot : null,
+                slotNumbers: index === 0 ? pref1Timeslot : index === 1 ? pref2Timeslot : [],
               };
             })
             .filter((p): p is NonNullable<typeof p> => p !== null);

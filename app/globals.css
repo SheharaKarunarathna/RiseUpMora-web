@@ -786,6 +786,27 @@ html {
   color: #002454;
 }
 
+.hero-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+}
+
+.hero-preference-action {
+  width: 55%;
+  min-height: 3.75rem;
+  border: 0;
+  background: linear-gradient(135deg, #002454, #1688b2);
+  box-shadow: 0 0.9rem 2rem rgb(0 36 84 / 25%);
+  color: #fff;
+  font-size: 1.02rem;
+}
+
+.hero-preference-action:hover,
+.hero-preference-action:focus-visible {
+  box-shadow: 0 1.1rem 2.4rem rgb(0 36 84 / 32%);
+}
+
 .registration-coming-soon {
   position: fixed;
   z-index: 120;
@@ -4113,6 +4134,71 @@ html {
     grid-template-columns: 1fr;
   }
 
+  /* Stack the four time slots and give them comfortable tap targets.
+     Scoped to .application-section so this beats the later base rule
+     regardless of source order. */
+  .application-section .timeslot-checkbox-group {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .application-section .timeslot-checkbox-item {
+    min-height: 3.25rem;
+    padding: 0.8rem 0.95rem;
+    /* On very narrow screens let the status badge drop to its own line
+       instead of squeezing the slot label into three wrapped lines. */
+    flex-wrap: wrap;
+    row-gap: 0.3rem;
+  }
+
+  .application-section .timeslot-checkbox-label {
+    flex: 1 1 auto;
+  }
+
+  .application-section .timeslot-status {
+    margin-left: auto;
+  }
+
+  /* Collapse the company guide from a table into stacked cards, using the
+     data-label on each cell as the row heading. */
+  .company-guide {
+    padding: 1.25rem;
+  }
+
+  .company-guide-table thead {
+    display: none;
+  }
+
+  .company-guide-table tr {
+    display: block;
+    margin-bottom: 0.7rem;
+    border: 1px solid rgb(0 36 84 / 10%);
+    border-radius: 0.85rem;
+    padding: 0.45rem 0.2rem;
+    background: #f8fcfe;
+  }
+
+  .company-guide-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .company-guide-table td {
+    display: block;
+    border-bottom: 0;
+    padding: 0.4rem 0.65rem;
+  }
+
+  .company-guide-table td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.2rem;
+    color: rgb(0 36 84 / 48%);
+    font-size: 0.64rem;
+    font-weight: 850;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
   .application-dropzone {
     min-height: 13rem;
     padding: 1.25rem;
@@ -4941,51 +5027,91 @@ html {
 
 /* ── Time Slot Selector ── */
 
-.timeslot-group {
+.timeslot-priority-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-bottom: 1.1rem;
+  padding: 0.85rem 1.1rem;
+ 
+  border-radius: 0.85rem;
+  background: #ffffff;
+  color: #000036 84 / 80%;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.timeslot-priority-notice svg {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+  color: #b45309;
+}
+
+.timeslot-checkbox-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
   margin-top: 0.5rem;
 }
 
-.timeslot-group label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.timeslot-group label > span {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: rgb(0 36 84 / 55%);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.timeslot-select-wrap {
+.timeslot-checkbox-item {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-}
-
-.timeslot-select-wrap select {
-  flex: 1;
-  padding: 0.6rem 0.85rem;
+  padding: 0.75rem 0.9rem;
   border-radius: 0.75rem;
   border: 1.5px solid rgb(0 36 84 / 12%);
+  background: #f8fcfe;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.timeslot-checkbox-item:has(input:checked) {
+  border-color: rgb(51 174 218 / 45%);
+  background: rgb(51 174 218 / 6%);
+}
+
+.timeslot-checkbox-item input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  min-width: 1.15rem;
+  border: 2px solid rgb(0 36 84 / 20%);
+  border-radius: 0.3rem;
   background: #ffffff;
-  color: #002454;
-  font-size: 0.85rem;
-  font-weight: 600;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
 }
 
-.timeslot-select-wrap select:focus {
-  border-color: #33aeda;
-  box-shadow: 0 0 0 3px rgb(51 174 218 / 10%);
+.timeslot-checkbox-item input[type="checkbox"]:checked {
+  background: #1688b2;
+  border-color: #1688b2;
 }
 
-.timeslot-select-wrap select:disabled {
+.timeslot-checkbox-item input[type="checkbox"]:checked::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.timeslot-checkbox-item input[type="checkbox"]:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.timeslot-checkbox-label {
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: #002454;
 }
 
 .timeslot-status {
@@ -4999,8 +5125,109 @@ html {
   color: #d97706;
 }
 
-.timeslot-status--filled {
-  color: #dc2626;
+.timeslot-status--available {
+  color: #16a34a;
+}
+
+.timeslot-empty-hint {
+  margin: 0;
+  color: rgb(0 36 84 / 56%);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+/* ── Company Reference Guide ── */
+
+.company-guide {
+  margin-top: 2rem;
+  border: 1px solid rgb(0 36 84 / 10%);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  background: #ffffff;
+  box-shadow: 0 0.5rem 2rem rgb(0 36 84 / 3%);
+}
+
+.company-guide__heading h2 {
+  margin: 0;
+  color: #002454;
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.company-guide__heading p {
+  margin: 0.4rem 0 1.15rem;
+  color: rgb(0 36 84 / 56%);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.company-guide__scroll {
+  overflow-x: auto;
+}
+
+.company-guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.company-guide-table th {
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1.5px solid rgb(0 36 84 / 12%);
+  background: rgb(0 36 84 / 4%);
+  color: #002454;
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.company-guide-table td {
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid rgb(0 36 84 / 7%);
+  color: rgb(0 36 84 / 78%);
+  line-height: 1.5;
+  vertical-align: top;
+}
+
+.company-guide-table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Keep the website column wide enough that domains don't break mid-word. */
+.company-guide-table th:nth-child(3),
+.company-guide-table td:nth-child(3) {
+  min-width: 11.5rem;
+}
+
+.company-guide-name {
+  color: #002454;
+  font-weight: 800;
+}
+
+.company-guide-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #1688b2;
+  font-weight: 750;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  transition: color 0.2s;
+}
+
+.company-guide-link:hover,
+.company-guide-link:focus-visible {
+  color: #0e6d8e;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.company-guide-link svg {
+  flex: 0 0 auto;
 }
 
 /* ── Terms & Conditions Checkbox ── */
