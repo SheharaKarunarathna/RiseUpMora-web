@@ -30,10 +30,13 @@ interface Panelist {
 }
 
 interface ExistingFeedback {
-  technical_skills: number;
-  communication: number;
-  industry_ready: number;
-  written_feedback: string;
+  technical_skills?: number;
+  technical_knowledge?: number;
+  communication?: number;
+  quality_of_projects?: number;
+  industry_ready?: number;
+  written_feedback?: string;
+  panelist_notes?: string;
 }
 
 interface EvaluationClientProps {
@@ -49,10 +52,11 @@ export default function EvaluationClient({
 }: EvaluationClientProps) {
   const router = useRouter();
 
-  const [tech, setTech] = useState(existingFeedback?.technical_skills || 5);
+  const [tech, setTech] = useState(existingFeedback?.technical_knowledge || existingFeedback?.technical_skills || 5);
   const [comm, setComm] = useState(existingFeedback?.communication || 5);
+  const [projects, setProjects] = useState(existingFeedback?.quality_of_projects || 5);
   const [industry, setIndustry] = useState(existingFeedback?.industry_ready || 5);
-  const [notes, setNotes] = useState(existingFeedback?.written_feedback || "");
+  const [notes, setNotes] = useState(existingFeedback?.written_feedback || existingFeedback?.panelist_notes || "");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -74,7 +78,9 @@ export default function EvaluationClient({
           panelistId: panelist.panelist_id,
           companyId: panelist.company_id,
           technicalSkills: tech,
+          technicalKnowledge: tech,
           communication: comm,
+          qualityOfProjects: projects,
           industryReady: industry,
           writtenFeedback: notes,
         }),
@@ -213,7 +219,18 @@ export default function EvaluationClient({
           {renderRatingScale(comm, setComm)}
         </div>
 
-        {/* 3. Industry Ready */}
+        {/* 3. Quality of Projects */}
+        <div>
+          <label className="block text-xs font-extrabold text-[#002454] uppercase tracking-wider">
+            Quality of Projects
+          </label>
+          <p className="text-[11px] text-[#002454]/50 leading-relaxed mt-0.5">
+            Complexity, relevance, execution, technical depth, and presentation of candidate projects.
+          </p>
+          {renderRatingScale(projects, setProjects)}
+        </div>
+
+        {/* 4. Industry Ready */}
         <div>
           <label className="block text-xs font-extrabold text-[#002454] uppercase tracking-wider">
             Industry Ready

@@ -1,4 +1,7 @@
 import Image from "next/image";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { redirect } from "next/navigation";
 import chairPersonOne from "../assets/Chairs/3.png";
 import chairPersonTwo from "../assets/Chairs/4.png";
 import chairPersonThree from "../assets/Chairs/5.png";
@@ -149,7 +152,12 @@ const footerEvents = [
   },
 ] as const;
 
-export default function Home() {
+export default async function Home() {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.role === "panelist") {
+    redirect("/panelist/dashboard");
+  }
+
   return (
     <div className="home-page">
       <Preloader />

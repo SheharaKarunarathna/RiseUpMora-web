@@ -456,6 +456,10 @@ export default function CandidateApplicationPage() {
                                   <span className="rating-value">{item.communication ?? "N/A"}/10</span>
                                 </div>
                                 <div className="candidate-rating-item" style={{ padding: "0.4rem 0.75rem" }}>
+                                  <span className="rating-label">Quality of Projects</span>
+                                  <span className="rating-value">{item.quality_of_projects ?? "N/A"}/10</span>
+                                </div>
+                                <div className="candidate-rating-item" style={{ padding: "0.4rem 0.75rem" }}>
                                   <span className="rating-label">Industry Ready</span>
                                   <span className="rating-value">{item.industry_ready ?? "N/A"}/10</span>
                                 </div>

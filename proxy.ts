@@ -6,6 +6,13 @@ export async function proxy(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET || process.env.SECRET || "default_secret" });
   const { pathname } = req.nextUrl;
 
+  // Redirect panelist from homepage '/' directly to panelist dashboard
+  if (pathname === "/") {
+    if (token && token.role === "panelist") {
+      return NextResponse.redirect(new URL("/panelist/dashboard", req.url));
+    }
+  }
+
   // Protect /admin routes
   if (pathname.startsWith("/admin")) {
     // 1. If hitting exactly /admin, redirect to /admin/dashboard or /admin/login
@@ -51,5 +58,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/company/:path*", "/panelist/:path*"],
+  matcher: ["/", "/admin/:path*", "/company/:path*", "/panelist/:path*"],
 };

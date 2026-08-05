@@ -93,8 +93,12 @@ export async function GET(
         const companyId = panRes.rows[0].company_id;
         const panelistId = panRes.rows[0].id;
         const authCheck = await query(
-          `SELECT 1 FROM allocations 
-           WHERE candidate_id = $1 AND (company_id = $2 OR panelist_id = $3)`,
+          `SELECT 1 FROM candidates 
+           WHERE id = $1 AND (pref_1 = $2::text OR pref_2 = $2::text OR pref_3 = $2::text OR pref_4 = $2::text)
+           UNION
+           SELECT 1 FROM timeslot_bookings WHERE candidate_id = $1 AND company_id = $2::uuid
+           UNION
+           SELECT 1 FROM allocations WHERE candidate_id = $1 AND (company_id = $2 OR panelist_id = $3)`,
           [candidate.id, companyId, panelistId]
         );
         if ((authCheck.rowCount ?? 0) > 0) {

@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== "company_coordinator") {
+    if (!session || (session.user.role !== "company_coordinator" && session.user.role !== "panelist")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -17,15 +17,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Candidate ID is required" }, { status: 400 });
     }
 
-    // 1. Resolve coordinator's company_id
+    // 1. Resolve coordinator's or panelist's company_id
     let targetCompanyId = companyId;
     if (!targetCompanyId) {
-      const companyRes = await query(
-        `SELECT company_id FROM company_coordinators WHERE user_id = $1`,
-        [session.user.id]
-      );
-      if (companyRes.rowCount && companyRes.rowCount > 0) {
-        targetCompanyId = companyRes.rows[0].company_id;
+      if (session.user.role === "company_coordinator") {
+        const companyRes = await query(
+          `SELECT company_id FROM company_coordinators WHERE user_id = $1`,
+          [session.user.id]
+        );
+        if (companyRes.rowCount && companyRes.rowCount > 0) {
+          targetCompanyId = companyRes.rows[0].company_id;
+        }
+      } else if (session.user.role === "panelist") {
+        const panRes = await query(
+          `SELECT company_id FROM panelists WHERE user_id = $1`,
+          [session.user.id]
+        );
+        if (panRes.rowCount && panRes.rowCount > 0) {
+          targetCompanyId = panRes.rows[0].company_id;
+        }
       }
     }
 

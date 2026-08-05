@@ -76,6 +76,7 @@ export async function GET() {
            a.panel_number,
            f.technical_skills,
            f.communication,
+           f.quality_of_projects,
            f.industry_ready,
            f.written_feedback
          FROM users u

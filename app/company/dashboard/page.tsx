@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Building2, Calendar, CheckCircle, Clock, Layers } from "lucide-react";
 import Link from "next/link";
 import PreferenceTableClient from "./PreferenceTableClient";
+import { fetchCompanyCandidates } from "@/lib/company-data";
 
 export const dynamic = "force-dynamic";
 
@@ -51,157 +52,17 @@ export default async function CompanyDashboardOverview(props: {
       companyLogo = company.logo_url;
       companyId = company.id;
 
-      // Fetch all required candidate datasets concurrently
-      const [
-        slot1Res,
-        slot2Res,
-        slot3Res,
-        slot4Res,
-        unassignedRes,
-        pref1Res,
-        pref2Res,
-        pref3Res,
-        pref4Res
-      ] = await Promise.all([
-        // Slot 1: 10:00 AM – 11:00 AM
-        query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment,
-                  tb.slot_number, tb.preference_number, tb.no_timeslot_selected,
-                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
-                  COALESCE(tb.created_at, c.created_at) as preference_added_at,
-                  c.created_at
-           FROM timeslot_bookings tb
-           JOIN candidates c ON tb.candidate_id = c.id
-           JOIN users u ON c.user_id = u.id
-           WHERE tb.company_id = $1::uuid AND tb.slot_number = 1
-           ORDER BY tb.preference_number ASC NULLS LAST, COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
-          [companyId]
-        ),
-        // Slot 2: 11:00 AM – 12:00 PM
-        query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment,
-                  tb.slot_number, tb.preference_number, tb.no_timeslot_selected,
-                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
-                  COALESCE(tb.created_at, c.created_at) as preference_added_at,
-                  c.created_at
-           FROM timeslot_bookings tb
-           JOIN candidates c ON tb.candidate_id = c.id
-           JOIN users u ON c.user_id = u.id
-           WHERE tb.company_id = $1::uuid AND tb.slot_number = 2
-           ORDER BY tb.preference_number ASC NULLS LAST, COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
-          [companyId]
-        ),
-        // Slot 3: 1:30 PM – 2:30 PM
-        query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment,
-                  tb.slot_number, tb.preference_number, tb.no_timeslot_selected,
-                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
-                  COALESCE(tb.created_at, c.created_at) as preference_added_at,
-                  c.created_at
-           FROM timeslot_bookings tb
-           JOIN candidates c ON tb.candidate_id = c.id
-           JOIN users u ON c.user_id = u.id
-           WHERE tb.company_id = $1::uuid AND tb.slot_number = 3
-           ORDER BY tb.preference_number ASC NULLS LAST, COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
-          [companyId]
-        ),
-        // Slot 4: 2:30 PM – 3:30 PM
-        query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment,
-                  tb.slot_number, tb.preference_number, tb.no_timeslot_selected,
-                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
-                  COALESCE(tb.created_at, c.created_at) as preference_added_at,
-                  c.created_at
-           FROM timeslot_bookings tb
-           JOIN candidates c ON tb.candidate_id = c.id
-           JOIN users u ON c.user_id = u.id
-           WHERE tb.company_id = $1::uuid AND tb.slot_number = 4
-           ORDER BY tb.preference_number ASC NULLS LAST, COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
-          [companyId]
-        ),
-        // Unassigned / Candidates without fixed slot
-        query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment,
-                  tb.slot_number, tb.preference_number, tb.no_timeslot_selected,
-                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
-                  COALESCE(tb.created_at, c.created_at) as preference_added_at,
-                  c.created_at
-           FROM timeslot_bookings tb
-           JOIN candidates c ON tb.candidate_id = c.id
-           JOIN users u ON c.user_id = u.id
-           WHERE tb.company_id = $1::uuid AND (tb.slot_number IS NULL OR tb.no_timeslot_selected = TRUE)
-           ORDER BY tb.preference_number ASC NULLS LAST, COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
-          [companyId]
-        ),
-        // Preferences 1 — a candidate can now have several ticked slots for this
-        // preference, so slot numbers are aggregated into one row per candidate.
-        query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
-                  array_agg(tb.slot_number ORDER BY tb.slot_number) FILTER (WHERE tb.slot_number IS NOT NULL) as slot_numbers,
-                  bool_or(COALESCE(tb.no_timeslot_selected, FALSE)) as no_timeslot_selected,
-                  bool_or(COALESCE(tb.is_interviewed, c.is_interviewed, FALSE)) as is_interviewed,
-                  MIN(COALESCE(tb.created_at, c.created_at)) as preference_added_at
-           FROM candidates c
-           JOIN users u ON c.user_id = u.id
-           LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1::uuid AND tb.preference_number = 1
-           WHERE c.pref_1 = $1::text
-           GROUP BY c.id, u.name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
-           ORDER BY MIN(COALESCE(tb.created_at, c.created_at)) ASC, c.student_id ASC NULLS LAST`,
-          [companyId]
-        ),
-        // Preferences 2 — same aggregation as Preference 1
-        query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
-                  array_agg(tb.slot_number ORDER BY tb.slot_number) FILTER (WHERE tb.slot_number IS NOT NULL) as slot_numbers,
-                  bool_or(COALESCE(tb.no_timeslot_selected, FALSE)) as no_timeslot_selected,
-                  bool_or(COALESCE(tb.is_interviewed, c.is_interviewed, FALSE)) as is_interviewed,
-                  MIN(COALESCE(tb.created_at, c.created_at)) as preference_added_at
-           FROM candidates c
-           JOIN users u ON c.user_id = u.id
-           LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1::uuid AND tb.preference_number = 2
-           WHERE c.pref_2 = $1::text
-           GROUP BY c.id, u.name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at
-           ORDER BY MIN(COALESCE(tb.created_at, c.created_at)) ASC, c.student_id ASC NULLS LAST`,
-          [companyId]
-        ),
-        // Preferences 3
-        query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
-                  tb.slot_number, tb.no_timeslot_selected,
-                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
-                  COALESCE(tb.created_at, c.created_at) as preference_added_at
-           FROM candidates c
-           JOIN users u ON c.user_id = u.id
-           LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1::uuid AND tb.preference_number = 3
-           WHERE c.pref_3 = $1::text
-           ORDER BY COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
-          [companyId]
-        ),
-        // Preferences 4
-        query(
-          `SELECT c.id, u.name as candidate_name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at,
-                  tb.slot_number, tb.no_timeslot_selected,
-                  COALESCE(tb.is_interviewed, c.is_interviewed, FALSE) as is_interviewed,
-                  COALESCE(tb.created_at, c.created_at) as preference_added_at
-           FROM candidates c
-           JOIN users u ON c.user_id = u.id
-           LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1::uuid AND tb.preference_number = 4
-           WHERE c.pref_4 = $1::text
-           ORDER BY COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
-          [companyId]
-        )
-      ]);
+      const data = await fetchCompanyCandidates(companyId);
+      slot1Candidates = data.slot1Candidates;
+      slot2Candidates = data.slot2Candidates;
+      slot3Candidates = data.slot3Candidates;
+      slot4Candidates = data.slot4Candidates;
+      unassignedCandidates = data.unassignedCandidates;
 
-      slot1Candidates = slot1Res.rows;
-      slot2Candidates = slot2Res.rows;
-      slot3Candidates = slot3Res.rows;
-      slot4Candidates = slot4Res.rows;
-      unassignedCandidates = unassignedRes.rows;
-
-      pref1Candidates = pref1Res.rows;
-      pref2Candidates = pref2Res.rows;
-      pref3Candidates = pref3Res.rows;
-      pref4Candidates = pref4Res.rows;
+      pref1Candidates = data.pref1Candidates;
+      pref2Candidates = data.pref2Candidates;
+      pref3Candidates = data.pref3Candidates;
+      pref4Candidates = data.pref4Candidates;
     }
   } catch (error) {
     console.error("Error loading dashboard data:", error);

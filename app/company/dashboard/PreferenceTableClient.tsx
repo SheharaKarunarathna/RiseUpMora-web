@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Building2, ChevronDown, Clock, Tag, ExternalLink, Copy, Check } from "lucide-react";
+import Link from "next/link";
+import { Building2, ChevronDown, Clock, Tag, ExternalLink, Copy, Check, Award } from "lucide-react";
 
 export default function PreferenceTableClient({
   title,
@@ -10,6 +11,7 @@ export default function PreferenceTableClient({
   slotNum,
   showSlotFilter = false,
   showPrefBadge = false,
+  showEvaluate = false,
   subtitle,
 }: {
   title: string;
@@ -18,6 +20,7 @@ export default function PreferenceTableClient({
   slotNum?: number;
   showSlotFilter?: boolean;
   showPrefBadge?: boolean;
+  showEvaluate?: boolean;
   subtitle?: string;
 }) {
   const [slotFilter, setSlotFilter] = useState("");
@@ -191,6 +194,7 @@ export default function PreferenceTableClient({
                     <th className="py-3 px-3 border-r border-[#002454]/15 min-w-[120px]">Added Time</th>
                     <th className="py-3 px-4 border-r border-[#002454]/15 text-center">Actions</th>
                     <th className="py-3 px-3 text-center min-w-[110px]">Interviewed</th>
+                    {showEvaluate && <th className="py-3 px-3 border-l border-[#002454]/15 text-center min-w-[120px]">Evaluation</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y border-t border-[#002454]/15 divide-[#002454]/15">
@@ -346,6 +350,21 @@ export default function PreferenceTableClient({
                             )}
                           </label>
                         </td>
+                        {showEvaluate && (
+                          <td className="py-3.5 px-3 border-l border-[#002454]/15 text-center">
+                            <Link
+                              href={`/panelist/dashboard/evaluate/${cand.id}`}
+                              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all shadow-xs ${
+                                cand.feedback_id
+                                  ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
+                                  : "bg-[#f6c430] hover:bg-[#d49400] text-[#002454]"
+                              }`}
+                            >
+                              <Award size={13} />
+                              {cand.feedback_id ? "Edit Rated" : "Evaluate"}
+                            </Link>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -457,19 +476,33 @@ export default function PreferenceTableClient({
                       </div>
                     )}
 
-                    <div className="flex justify-end pt-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                       {cand.cv_url ? (
                         <a
                           href={`/api/v1/candidate/cv/${cand.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full sm:w-auto text-center inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#33aeda] hover:bg-[#289ac4] px-4 py-2 text-xs font-black text-white shadow-xs transition-colors"
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#33aeda] hover:bg-[#289ac4] px-4 py-2 text-xs font-black text-white shadow-xs transition-colors"
                         >
                           <span>View Candidate CV</span>
                           <ExternalLink size={13} />
                         </a>
                       ) : (
                         <span className="text-xs font-bold text-slate-400">No CV Attached</span>
+                      )}
+
+                      {showEvaluate && (
+                        <Link
+                          href={`/panelist/dashboard/evaluate/${cand.id}`}
+                          className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-black shadow-xs transition-colors ${
+                            cand.feedback_id
+                              ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
+                              : "bg-[#f6c430] hover:bg-[#d49400] text-[#002454]"
+                          }`}
+                        >
+                          <Award size={13} />
+                          {cand.feedback_id ? "Edit Rated" : "Evaluate"}
+                        </Link>
                       )}
                     </div>
                   </div>

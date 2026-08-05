@@ -47,7 +47,7 @@ export default async function EvaluatePage(props: {
 
   // 3. Get existing feedback
   const feedbackRes = await query(
-    `SELECT technical_skills, communication, industry_ready, written_feedback
+    `SELECT *
      FROM feedback
      WHERE candidate_id = $1 AND panelist_id = $2`,
     [candidateId, panelist.panelist_id]

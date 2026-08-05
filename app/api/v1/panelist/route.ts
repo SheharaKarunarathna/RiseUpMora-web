@@ -81,8 +81,10 @@ export async function POST(req: Request) {
         candidateId, 
         panelistId, 
         companyId: bodyCompanyId, 
-        technicalSkills, 
+        technicalSkills,
+        technicalKnowledge,
         communication, 
+        qualityOfProjects,
         industryReady, 
         writtenFeedback 
       } = body;
@@ -95,21 +97,59 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Unauthorized company evaluation" }, { status: 403 });
       }
 
-      // Calculate score out of 100
-      const score = Math.round(((technicalSkills + communication + industryReady) / 3) * 10);
+      const tech = Number(technicalKnowledge ?? technicalSkills ?? 5);
+      const comm = Number(communication ?? 5);
+      const proj = Number(qualityOfProjects ?? 5);
+      const ind = Number(industryReady ?? 5);
 
-      // Upsert feedback
-      await query(
-        `INSERT INTO feedback (candidate_id, panelist_id, company_id, technical_skills, communication, industry_ready, score, written_feedback)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         ON CONFLICT (candidate_id, company_id) DO UPDATE
-         SET technical_skills = EXCLUDED.technical_skills,
-             communication = EXCLUDED.communication,
-             industry_ready = EXCLUDED.industry_ready,
-             score = EXCLUDED.score,
-             written_feedback = EXCLUDED.written_feedback`,
-        [candidateId, panelistId, companyId, technicalSkills, communication, industryReady, score, writtenFeedback]
-      );
+      // Calculate score out of 100 based on all 4 criteria
+      const score = Math.round(((tech + comm + proj + ind) / 4) * 10);
+
+      // Robust upsert feedback handling schema variations
+      try {
+        await query(
+          `INSERT INTO feedback (candidate_id, panelist_id, company_id, technical_skills, technical_knowledge, communication, quality_of_projects, industry_ready, score, written_feedback, panelist_notes)
+           VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $9)
+           ON CONFLICT (candidate_id, company_id) DO UPDATE
+           SET technical_skills = EXCLUDED.technical_skills,
+               technical_knowledge = EXCLUDED.technical_knowledge,
+               communication = EXCLUDED.communication,
+               quality_of_projects = EXCLUDED.quality_of_projects,
+               industry_ready = EXCLUDED.industry_ready,
+               score = EXCLUDED.score,
+               written_feedback = EXCLUDED.written_feedback,
+               panelist_notes = EXCLUDED.panelist_notes`,
+          [candidateId, panelistId, companyId, tech, comm, proj, ind, score, writtenFeedback]
+        );
+      } catch (err: any) {
+        // Fallback for schemas without technical_knowledge or panelist_notes columns
+        try {
+          await query(
+            `INSERT INTO feedback (candidate_id, panelist_id, company_id, technical_skills, communication, quality_of_projects, industry_ready, score, written_feedback)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             ON CONFLICT (candidate_id, company_id) DO UPDATE
+             SET technical_skills = EXCLUDED.technical_skills,
+                 communication = EXCLUDED.communication,
+                 quality_of_projects = EXCLUDED.quality_of_projects,
+                 industry_ready = EXCLUDED.industry_ready,
+                 score = EXCLUDED.score,
+                 written_feedback = EXCLUDED.written_feedback`,
+            [candidateId, panelistId, companyId, tech, comm, proj, ind, score, writtenFeedback]
+          );
+        } catch (fallbackErr: any) {
+          await query(
+            `INSERT INTO feedback (candidate_id, panelist_id, company_id, technical_skills, communication, industry_ready, score, written_feedback)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             ON CONFLICT (candidate_id, company_id) DO UPDATE
+             SET technical_skills = EXCLUDED.technical_skills,
+                 communication = EXCLUDED.communication,
+                 industry_ready = EXCLUDED.industry_ready,
+                 score = EXCLUDED.score,
+                 written_feedback = EXCLUDED.written_feedback`,
+            [candidateId, panelistId, companyId, tech, comm, ind, score, writtenFeedback]
+          );
+        }
+      }
 
       // Update candidate status to Evaluated if column exists
       try {
