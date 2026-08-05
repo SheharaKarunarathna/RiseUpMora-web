@@ -55,13 +55,13 @@ const SAMPLE_RECIPIENTS = [
   "kalharaj.23@cse.mrt.ac.lk",
 ];
 
-const SUBJECT = "Companies Available to Select Now! Reserve Your Spot - Rise Up Mora";
+const SUBJECT = "🚨 IMPORTANT NOTICE: RISE UP MORA 2026 🚨";
 
 const HTML_TEMPLATE = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Company Selection Open Now</title>
+  <title>Important Notice: Rise Up Mora 2026</title>
   <style>
     body { font-family: 'Inter', Arial, sans-serif; background-color: #f8fcfe; margin: 0; padding: 0; }
     .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,36,84,0.08); border: 1px solid rgba(0,36,84,0.1); }
@@ -69,8 +69,10 @@ const HTML_TEMPLATE = `<!DOCTYPE html>
     .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
     .header h1 span { color: #f6c430; }
     .content { padding: 36px 32px; color: #333333; }
-    .content h2 { color: #002454; margin-top: 0; font-size: 20px; font-weight: 800; }
+    .content h2 { color: #002454; margin-top: 0; font-size: 20px; font-weight: 800; text-align: center; }
     .content p { line-height: 1.6; margin-bottom: 20px; color: #4a5568; }
+    .content ul { line-height: 1.6; margin-bottom: 24px; color: #4a5568; padding-left: 20px; }
+    .content li { margin-bottom: 12px; }
     .footer { background-color: #f8fcfe; padding: 24px; text-align: center; font-size: 13px; color: #718096; border-top: 1px solid rgba(0,36,84,0.05); }
   </style>
 </head>
@@ -80,17 +82,26 @@ const HTML_TEMPLATE = `<!DOCTYPE html>
       <h1>Rise Up <span>Mora</span></h1>
     </div>
     <div class="content">
-      <h2>Company Selection is Now Open!</h2>
-      <p>Hello Candidate,</p>
+      <h2>🚨 IMPORTANT NOTICE: RISE UP MORA 2026 🚨</h2>
+      
+      <p>Getting ready for the Internship &amp; Mock Interview Fair? Here is how the interview process works:</p>
+      
+      <ul>
+        <li><strong>Pre-Registered Candidates</strong> (Priority)</li>
+        <li><strong>Walk-In Interviews:</strong> Opened right after scheduled pre-booked slots finish, based on company availability.</li>
+      </ul>
+
       <div style="background-color: #fefce8; border-left: 4px solid #f6c430; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px;">
         <p style="margin: 0; color: #744210; font-weight: 700; font-size: 15px;">
-          🚀 Companies are available to select now! Quickly reserve your spot. Seats are limited!
+          Don't miss a walk-in chance! Join our official WhatsApp channel for live updates during the fair.
         </p>
       </div>
-      <p>Log in to your candidate dashboard to rank your preferred companies and select your time slots before capacity is reached.</p>
+      
       <div style="text-align: center; margin: 28px 0;">
-        <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/candidate/application" style="background-color: #f6c430; color: #002454; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 800; display: inline-block; font-size: 16px;">Select Companies &amp; Time Slots</a>
+        <a href="https://chat.whatsapp.com/JI7ZuSvaig53nuIYcrV0kM?s=cl&p=a&ilr=1" style="background-color: #f6c430; color: #002454; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 800; display: inline-block; font-size: 16px;">Join WhatsApp Channel</a>
       </div>
+
+      <p style="text-align: center; font-weight: 600; margin-bottom: 0;">See you all there ✨️</p>
     </div>
     <div class="footer">
       &copy; ${new Date().getFullYear()} Rise Up Mora. All rights reserved.
@@ -141,8 +152,13 @@ async function sendBulkEmails() {
 
   let recipients = [...SAMPLE_RECIPIENTS];
 
-  // Optional: Attempt to load candidate emails from DB if DATABASE_URL exists
-  if (process.env.DATABASE_URL) {
+  const isTestMode = process.argv.includes("--test") || process.argv.includes("--sample") || process.env.TEST_MODE === "true";
+  const limitArg = process.argv.find((arg) => arg.startsWith("--limit="));
+  const limit = limitArg ? parseInt(limitArg.split("=")[1], 10) : null;
+
+  if (isTestMode) {
+    console.log("\n🧪 RUNNING IN TEST MODE: Using sample recipients list.\n");
+  } else if (process.env.DATABASE_URL) {
     try {
       const pool = new Pool({
         connectionString: process.env.DATABASE_URL,
@@ -159,6 +175,11 @@ async function sendBulkEmails() {
     } catch (err) {
       console.log(`\n⚠️  Database query skipped (${err.message}). Using sample recipient list.\n`);
     }
+  }
+
+  if (limit && !isNaN(limit)) {
+    recipients = recipients.slice(0, limit);
+    console.log(`⏱️  Limit applied: sending to first ${recipients.length} recipient(s).\n`);
   }
 
   let totalSuccess = 0;

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Building2, ChevronDown, Clock, Tag, ExternalLink, Copy, Check, Award } from "lucide-react";
+import { Building2, ChevronDown, Clock, Tag, ExternalLink, Copy, Check, Award, Search } from "lucide-react";
 
 export default function PreferenceTableClient({
   title,
@@ -24,6 +24,7 @@ export default function PreferenceTableClient({
   subtitle?: string;
 }) {
   const [slotFilter, setSlotFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [interviewedMap, setInterviewedMap] = useState<Record<string, boolean>>({});
 
@@ -86,10 +87,28 @@ export default function PreferenceTableClient({
   };
 
   const filteredCandidates = candidates.filter((cand) => {
-    if (!slotFilter) return true;
-    const slotNumbers: number[] = cand.slot_numbers || [];
-    if (slotFilter === "none") return slotNumbers.length === 0;
-    return slotNumbers.map(String).includes(slotFilter);
+    // 1. Slot Filter
+    if (slotFilter) {
+      const slotNumbers: number[] = cand.slot_numbers || [];
+      if (slotFilter === "none" && slotNumbers.length > 0) return false;
+      if (slotFilter !== "none" && !slotNumbers.map(String).includes(slotFilter)) return false;
+    }
+
+    // 2. Front-end Real-time Search Filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const nameMatch = cand.candidate_name?.toLowerCase().includes(q);
+      const emailMatch = cand.email?.toLowerCase().includes(q);
+      const refMatch = cand.student_id?.toLowerCase().includes(q);
+      const deptMatch = cand.department?.toLowerCase().includes(q);
+      const phoneMatch = cand.contact_number?.toLowerCase().includes(q);
+
+      if (!nameMatch && !emailMatch && !refMatch && !deptMatch && !phoneMatch) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   // Sorting logic:
@@ -144,7 +163,7 @@ export default function PreferenceTableClient({
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base sm:text-lg font-extrabold text-[#002454] tracking-tight">{title}</h3>
               <span className="inline-flex items-center rounded-full bg-[#33aeda]/15 px-2.5 py-0.5 text-xs font-black text-[#0d6082] border border-[#33aeda]/30">
-                {candidates.length} {candidates.length === 1 ? "candidate" : "candidates"}
+                {sortedCandidates.length} of {candidates.length} {candidates.length === 1 ? "candidate" : "candidates"}
               </span>
             </div>
             {subtitle && (
@@ -152,22 +171,45 @@ export default function PreferenceTableClient({
             )}
           </div>
 
-          {showSlotFilter && candidates.length > 0 && (
-            <div className="relative w-full sm:w-auto">
-              <select
-                value={slotFilter}
-                onChange={(e) => setSlotFilter(e.target.value)}
-                className="w-full sm:w-auto appearance-none rounded-xl border-2 border-[#002454]/20 bg-[#f8fcfe] py-1.5 pl-3 pr-8 text-xs font-extrabold text-[#002454] outline-none focus:border-[#33aeda]"
-              >
-                <option value="">All Time Slots</option>
-                <option value="1">Slot 1 (10:00 - 11:00)</option>
-                <option value="2">Slot 2 (11:00 - 12:00)</option>
-                <option value="3">Slot 3 (1:30 - 2:30)</option>
-                <option value="4">Slot 4 (2:30 - 3:30)</option>
-              </select>
-              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#002454]/50 pointer-events-none" />
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+            {/* Front-end Real-time Search Box */}
+            <div className="relative w-full sm:w-64">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#002454]/50 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search candidate, ref #, dept..."
+                className="w-full rounded-xl border-2 border-[#002454]/20 bg-[#f8fcfe] py-1.5 pl-9 pr-7 text-xs font-extrabold text-[#002454] placeholder-[#002454]/40 outline-none focus:border-[#33aeda] transition-all"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#002454]/40 hover:text-[#002454] font-black text-xs cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
             </div>
-          )}
+
+            {showSlotFilter && candidates.length > 0 && (
+              <div className="relative w-full sm:w-auto">
+                <select
+                  value={slotFilter}
+                  onChange={(e) => setSlotFilter(e.target.value)}
+                  className="w-full sm:w-auto appearance-none rounded-xl border-2 border-[#002454]/20 bg-[#f8fcfe] py-1.5 pl-3 pr-8 text-xs font-extrabold text-[#002454] outline-none focus:border-[#33aeda]"
+                >
+                  <option value="">All Time Slots</option>
+                  <option value="1">Slot 1 (10:00 - 11:00)</option>
+                  <option value="2">Slot 2 (11:00 - 12:00)</option>
+                  <option value="3">Slot 3 (1:30 - 2:30)</option>
+                  <option value="4">Slot 4 (2:30 - 3:30)</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#002454]/50 pointer-events-none" />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Empty State */}
@@ -175,7 +217,11 @@ export default function PreferenceTableClient({
           <div className="flex flex-col items-center justify-center py-16 text-center text-[#002454]/40 border-2 border-dashed border-[#002454]/10 rounded-xl bg-[#fbfdfe]">
             <Building2 size={44} className="mb-2 text-[#002454]/25" />
             <p className="font-bold text-sm text-[#002454]/70">
-              {slotFilter ? "No candidates found for this time slot." : "No candidates registered for this section."}
+              {searchQuery
+                ? `No candidates found matching "${searchQuery}".`
+                : slotFilter
+                ? "No candidates found for this time slot."
+                : "No candidates registered for this section."}
             </p>
           </div>
         ) : (
@@ -190,7 +236,6 @@ export default function PreferenceTableClient({
                     <th className="py-3 px-4 border-r border-[#002454]/15 min-w-[220px]">Candidate Details</th>
                     <th className="py-3 px-3 border-r border-[#002454]/15 min-w-[170px]">Department</th>
                     {showPrefBadge && <th className="py-3 px-3 border-r border-[#002454]/15 text-center">Preference</th>}
-                    {showSlotFilter && <th className="py-3 px-3 border-r border-[#002454]/15 text-center">Time Slot</th>}
                     <th className="py-3 px-3 border-r border-[#002454]/15 min-w-[120px]">Added Time</th>
                     <th className="py-3 px-4 border-r border-[#002454]/15 text-center">Actions</th>
                     <th className="py-3 px-3 text-center min-w-[110px]">Interviewed</th>
@@ -299,21 +344,6 @@ export default function PreferenceTableClient({
                             >
                               <Tag size={11} /> Pref {cand.preference_number || (cand.pref_1 === cand.company_id ? 1 : cand.pref_2 === cand.company_id ? 2 : cand.pref_3 === cand.company_id ? 3 : 4)}
                             </span>
-                          </td>
-                        )}
-                        {showSlotFilter && (
-                          <td className="py-3.5 px-3 border-r border-[#002454]/15 text-center">
-                            {cand.slot_numbers && cand.slot_numbers.length > 0 ? (
-                              <div className="flex flex-wrap items-center justify-center gap-1">
-                                {cand.slot_numbers.map((slot: number) => (
-                                  <span key={slot} className="inline-flex items-center gap-1 rounded-md bg-[#1688b2]/15 border border-[#1688b2]/30 px-2 py-1 text-[11px] font-extrabold text-[#1688b2]">
-                                    <Clock size={11} /> Slot {slot}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-[11px] font-bold text-amber-700 italic">No slot</span>
-                            )}
                           </td>
                         )}
                         <td className="py-3.5 px-3 border-r border-[#002454]/15 text-xs font-bold text-[#002454]/80 whitespace-normal break-words">

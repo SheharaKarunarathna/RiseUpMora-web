@@ -34,16 +34,11 @@ export default async function PanelistDashboardPage() {
 
   const panelist = panelistRes.rows[0];
 
-  // 2. Fetch candidate application tables for panelist's company
-  const {
-    slot1Candidates,
-    slot2Candidates,
-    slot3Candidates,
-    slot4Candidates,
-    unassignedCandidates,
-    totalCandidateCount,
-    totalInterviewedCount,
-  } = await fetchCompanyCandidates(panelist.company_id);
+  // 2. Fetch united candidate applications for panelist's company
+  const { unitedCandidates = [] } = await fetchCompanyCandidates(panelist.company_id);
+
+  const totalCandidateCount = unitedCandidates.length;
+  const totalInterviewedCount = unitedCandidates.filter((c: any) => c.is_interviewed).length;
 
   return (
     <div className="flex flex-col gap-8 max-w-6xl mx-auto">
@@ -105,63 +100,27 @@ export default async function PanelistDashboardPage() {
         </div>
       </div>
 
-      {/* Candidate Application Time Slot Tables Section */}
+      {/* United Candidate Applications Table Section */}
       <div className="flex flex-col gap-6">
         <div className="border-b border-[#002454]/10 pb-4">
           <h2 className="text-xl font-extrabold text-[#002454]">
-            Candidate Applications per Time Slot
+            Candidate Applications
           </h2>
           <p className="text-xs text-[#002454]/60 mt-0.5">
-            Interview sequence per time slot. Use actions to evaluate candidates and mark interview status.
+            United candidate list for {panelist.company_name}. Use actions to evaluate candidates and mark interview status.
           </p>
         </div>
 
         <div className="flex flex-col gap-8 w-full">
           <PreferenceTableClient
-            title="Slot 1 (10:00 AM – 11:00 AM)"
-            subtitle="Candidates scheduled for Time Slot 1"
-            candidates={slot1Candidates}
-            slotNum={1}
-            showPrefBadge={false}
-            showEvaluate={true}
-          />
-          <PreferenceTableClient
-            title="Slot 2 (11:00 AM – 12:00 PM)"
-            subtitle="Candidates scheduled for Time Slot 2"
-            candidates={slot2Candidates}
-            slotNum={2}
-            showPrefBadge={false}
-            showEvaluate={true}
-          />
-          <PreferenceTableClient
-            title="Slot 3 (1:30 PM – 2:30 PM)"
-            subtitle="Candidates scheduled for Time Slot 3"
-            candidates={slot3Candidates}
-            slotNum={3}
-            showPrefBadge={false}
-            showEvaluate={true}
-          />
-          <PreferenceTableClient
-            title="Slot 4 (2:30 PM – 3:30 PM)"
-            subtitle="Candidates scheduled for Time Slot 4"
-            candidates={slot4Candidates}
-            slotNum={4}
-            showPrefBadge={false}
+            title="All Applicants"
+            subtitle={`All unique candidates who selected ${panelist.company_name} as a preference`}
+            candidates={unitedCandidates}
+            showSlotFilter={false}
+            showPrefBadge={true}
             showEvaluate={true}
           />
         </div>
-
-        {unassignedCandidates.length > 0 && (
-          <div className="w-full">
-            <PreferenceTableClient
-              title="No Fixed Time Slot"
-              subtitle="Candidates registered for this company without a specific time slot"
-              candidates={unassignedCandidates}
-              showPrefBadge={false}
-              showEvaluate={true}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ export async function fetchCompanyCandidates(companyId: string) {
   let pref2Candidates: any[] = [];
   let pref3Candidates: any[] = [];
   let pref4Candidates: any[] = [];
+  let unitedCandidates: any[] = [];
 
   try {
     const [
@@ -22,7 +23,8 @@ export async function fetchCompanyCandidates(companyId: string) {
       pref1Res,
       pref2Res,
       pref3Res,
-      pref4Res
+      pref4Res,
+      unitedRes
     ] = await Promise.all([
       // Slot 1: 10:00 AM – 11:00 AM
       query(
@@ -167,6 +169,53 @@ export async function fetchCompanyCandidates(companyId: string) {
          WHERE c.pref_4 = $1::text
          ORDER BY COALESCE(tb.created_at, c.created_at) ASC, c.student_id ASC NULLS LAST`,
         [companyId]
+      ),
+      // United Candidates (All candidates who added this company as any preference or booked a slot, deduplicated)
+      query(
+        `SELECT 
+          c.id, 
+          u.name as candidate_name, 
+          u.email, 
+          c.student_id, 
+          c.department, 
+          c.contact_number, 
+          c.cv_url, 
+          c.application_comment, 
+          c.created_at,
+          MIN(
+            CASE
+              WHEN c.pref_1 = $1::text THEN 1
+              WHEN c.pref_2 = $1::text THEN 2
+              WHEN c.pref_3 = $1::text THEN 3
+              WHEN c.pref_4 = $1::text THEN 4
+              ELSE tb.preference_number
+            END
+          ) as preference_number,
+          array_remove(array_agg(DISTINCT tb.slot_number), NULL) as slot_numbers,
+          bool_or(COALESCE(tb.no_timeslot_selected, FALSE)) as no_timeslot_selected,
+          bool_or(COALESCE(tb.is_interviewed, c.is_interviewed, FALSE)) as is_interviewed,
+          MIN(COALESCE(tb.created_at, c.created_at)) as preference_added_at,
+          f.id as feedback_id
+         FROM candidates c
+         JOIN users u ON c.user_id = u.id
+         LEFT JOIN timeslot_bookings tb ON tb.candidate_id = c.id AND tb.company_id = $1::uuid
+         LEFT JOIN feedback f ON f.candidate_id = c.id AND f.company_id = $1::uuid
+         WHERE c.pref_1 = $1::text 
+            OR c.pref_2 = $1::text 
+            OR c.pref_3 = $1::text 
+            OR c.pref_4 = $1::text
+            OR tb.company_id = $1::uuid
+         GROUP BY c.id, u.name, u.email, c.student_id, c.department, c.contact_number, c.cv_url, c.application_comment, c.created_at, f.id
+         ORDER BY MIN(
+            CASE
+              WHEN c.pref_1 = $1::text THEN 1
+              WHEN c.pref_2 = $1::text THEN 2
+              WHEN c.pref_3 = $1::text THEN 3
+              WHEN c.pref_4 = $1::text THEN 4
+              ELSE tb.preference_number
+            END
+          ) ASC NULLS LAST, MIN(COALESCE(tb.created_at, c.created_at)) ASC, c.student_id ASC NULLS LAST`,
+        [companyId]
       )
     ]);
 
@@ -180,6 +229,7 @@ export async function fetchCompanyCandidates(companyId: string) {
     pref2Candidates = pref2Res.rows;
     pref3Candidates = pref3Res.rows;
     pref4Candidates = pref4Res.rows;
+    unitedCandidates = unitedRes.rows;
   } catch (error) {
     console.error("Error fetching company candidates:", error);
   }
@@ -215,6 +265,7 @@ export async function fetchCompanyCandidates(companyId: string) {
     pref2Candidates,
     pref3Candidates,
     pref4Candidates,
+    unitedCandidates,
     totalCandidateCount,
     totalInterviewedCount,
   };
