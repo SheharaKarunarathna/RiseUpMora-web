@@ -125,7 +125,7 @@ export async function GET(
           "",
           { resource_type: "raw", type: "authenticated" }
         );
-        pdfResponse = await fetch(authSignedUrl);
+        pdfResponse = await fetch(authSignedUrl, { cache: "no-store" });
 
         // Fallback: try signed download URL for upload type
         if (!pdfResponse.ok) {
@@ -134,14 +134,14 @@ export async function GET(
             "",
             { resource_type: "raw", type: "upload" }
           );
-          pdfResponse = await fetch(uploadSignedUrl);
+          pdfResponse = await fetch(uploadSignedUrl, { cache: "no-store" });
         }
       }
     }
 
     // Direct fetch fallback
     if (!pdfResponse || !pdfResponse.ok) {
-      pdfResponse = await fetch(candidate.cv_url);
+      pdfResponse = await fetch(candidate.cv_url, { cache: "no-store" });
     }
 
     if (!pdfResponse.ok) {

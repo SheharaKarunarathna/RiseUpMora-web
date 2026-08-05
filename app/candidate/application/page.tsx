@@ -567,7 +567,7 @@ export default function CandidateApplicationPage() {
                       </span>
                       <div className="cv-dropzone-actions" onClick={(e) => e.stopPropagation()}>
                         <a
-                          href="/api/v1/candidate/cv/me"
+                          href={`/api/v1/candidate/cv/me?t=${Date.now()}`}
                           target="_blank"
                           rel="noreferrer"
                           className="cv-dropzone-btn cv-dropzone-btn--primary"
