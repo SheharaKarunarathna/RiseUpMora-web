@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__0cbk-n2._.css\" -o /tmp/bundle.css)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(curl -s \"http://localhost:3000/dev-preview-notice-temp\" -o /tmp/noticepage2.html -H \"Cache-Control: no-cache\")",
+      "Bash(\"/c/Program Files \\(x86\\)/Microsoft/Edge/Application/msedge.exe\" --headless=new --disable-gpu --no-sandbox --virtual-time-budget=8000 --screenshot=\"C:/Users/MSI/AppData/Local/Temp/claude/c--Users-MSI-Documents-Github-RiseUpMora-web/fcc9fe0c-7b87-4060-9650-39fd95588a4e/scratchpad/mobile-app2-full.png\" --window-size=390,4600 \"http://localhost:3000/dev-preview-mobile-app2-temp\")"
+    ]
+  }
+}

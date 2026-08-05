@@ -84,8 +84,9 @@ export default function PreferenceTableClient({
 
   const filteredCandidates = candidates.filter((cand) => {
     if (!slotFilter) return true;
-    if (slotFilter === "none") return !cand.slot_number;
-    return String(cand.slot_number) === slotFilter;
+    const slotNumbers: number[] = cand.slot_numbers || [];
+    if (slotFilter === "none") return slotNumbers.length === 0;
+    return slotNumbers.map(String).includes(slotFilter);
   });
 
   // Sorting logic:
@@ -298,10 +299,14 @@ export default function PreferenceTableClient({
                         )}
                         {showSlotFilter && (
                           <td className="py-3.5 px-3 border-r border-[#002454]/15 text-center">
-                            {cand.slot_number ? (
-                              <span className="inline-flex items-center gap-1 rounded-md bg-[#1688b2]/15 border border-[#1688b2]/30 px-2 py-1 text-[11px] font-extrabold text-[#1688b2]">
-                                <Clock size={11} /> Slot {cand.slot_number}
-                              </span>
+                            {cand.slot_numbers && cand.slot_numbers.length > 0 ? (
+                              <div className="flex flex-wrap items-center justify-center gap-1">
+                                {cand.slot_numbers.map((slot: number) => (
+                                  <span key={slot} className="inline-flex items-center gap-1 rounded-md bg-[#1688b2]/15 border border-[#1688b2]/30 px-2 py-1 text-[11px] font-extrabold text-[#1688b2]">
+                                    <Clock size={11} /> Slot {slot}
+                                  </span>
+                                ))}
+                              </div>
                             ) : (
                               <span className="text-[11px] font-bold text-amber-700 italic">No slot</span>
                             )}

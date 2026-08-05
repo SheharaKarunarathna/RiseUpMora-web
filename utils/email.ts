@@ -198,7 +198,7 @@ export type ApplicationConfirmationDetails = {
     rank: number;
     companyName: string;
     logoUrl?: string | null;
-    slotNumber?: number | null;
+    slotNumbers?: number[] | null;
   }>;
   comment?: string | null;
 };
@@ -207,12 +207,17 @@ export const sendApplicationConfirmationEmail = async (
   to: string,
   details: ApplicationConfirmationDetails,
 ) => {
-  const formatSlot = (slotNumber?: number | null) => {
+  const formatSlotLabel = (slotNumber: number) => {
     if (slotNumber === 1) return "Slot 1: 10:00 AM – 11:00 AM";
     if (slotNumber === 2) return "Slot 2: 11:00 AM – 12:00 PM";
     if (slotNumber === 3) return "Slot 3: 1:30 PM – 2:30 PM";
     if (slotNumber === 4) return "Slot 4: 2:30 PM – 3:30 PM";
-    return "No time slot selected";
+    return "";
+  };
+
+  const formatSlots = (slotNumbers?: number[] | null) => {
+    if (!slotNumbers || slotNumbers.length === 0) return "No time slot selected";
+    return slotNumbers.map(formatSlotLabel).join(", ");
   };
 
   const safe = (str?: string | null) =>
@@ -255,7 +260,7 @@ export const sendApplicationConfirmationEmail = async (
                   ${
                     p.rank === 1 || p.rank === 2
                       ? `<span style="background: rgba(51,174,218,0.12); color: #1688b2; font-weight: 700; font-size: 12px; padding: 6px 12px; border-radius: 8px; display: inline-block; white-space: nowrap;">
-                          ${formatSlot(p.slotNumber)}
+                          ${formatSlots(p.slotNumbers)}
                          </span>`
                       : `<span style="color: #718096; font-size: 12px; font-style: italic; white-space: nowrap;">No time slot required</span>`
                   }

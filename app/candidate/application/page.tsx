@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import SiteBackground from "../../site-background";
 import SiteHeader from "../../site-header";
+import CompanyGuide from "../company-guide";
 
 type CandidateApplication = {
   name: string;
@@ -29,8 +30,8 @@ type CandidateApplication = {
   cvUrl: string | null;
   preferences: Array<string | null>;
   comment: string;
-  pref1Timeslot: number | null;
-  pref2Timeslot: number | null;
+  pref1Timeslot: number[];
+  pref2Timeslot: number[];
 };
 
 type Company = {
@@ -44,7 +45,7 @@ type SlotInfo = {
   slot: number;
   filled: number;
   max: number;
-  status: "available" | "overcrowded" | "filled";
+  status: "available" | "overcrowded";
 };
 
 type UploadSignature = {
@@ -85,8 +86,7 @@ export default function CandidateApplicationPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [interviews, setInterviews] = useState<any[]>([]);
-  const [pref1Timeslot, setPref1Timeslot] = useState<number | null>(null);
-  const [pref2Timeslot, setPref2Timeslot] = useState<number | null>(null);
+  const [timeslots, setTimeslots] = useState<number[]>([]);
   const [slotCounts, setSlotCounts] = useState<Record<string, SlotInfo[]>>({});
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
@@ -129,8 +129,11 @@ export default function CandidateApplicationPage() {
           ),
         );
         setComment(data.candidate.comment);
-        setPref1Timeslot(data.candidate.pref1Timeslot);
-        setPref2Timeslot(data.candidate.pref2Timeslot);
+        setTimeslots(
+          data.candidate.pref1Timeslot.length > 0
+            ? data.candidate.pref1Timeslot
+            : data.candidate.pref2Timeslot,
+        );
         if (data.slotCounts) setSlotCounts(data.slotCounts);
         setIsLoading(false);
       })
@@ -197,9 +200,8 @@ export default function CandidateApplicationPage() {
         preferenceIndex === index ? value : preference,
       ),
     );
-    // Reset timeslot when company changes for pref 1 or 2
-    if (index === 0) setPref1Timeslot(null);
-    if (index === 1) setPref2Timeslot(null);
+    // Reset the shared timeslots when either of the top two preferences changes
+    if (index === 0 || index === 1) setTimeslots([]);
     // Fetch slot counts for the newly selected company
     if ((index === 0 || index === 1) && value) {
       fetchSlotCounts(value);
@@ -246,13 +248,9 @@ export default function CandidateApplicationPage() {
       setError("Each company preference must be different.");
       return;
     }
-    // Validate timeslots for pref 1 & 2
-    if (preferences[0] && !pref1Timeslot) {
-      setError("Please select a time slot for Preference 1.");
-      return;
-    }
-    if (preferences[1] && !pref2Timeslot) {
-      setError("Please select a time slot for Preference 2.");
+    // Validate the shared timeslots for pref 1 & 2
+    if ((preferences[0] || preferences[1]) && timeslots.length === 0) {
+      setError("Please select at least one time slot for your top two preferences.");
       return;
     }
     if (!agreedToTerms) {
@@ -321,8 +319,8 @@ export default function CandidateApplicationPage() {
           publicId: uploadedPublicId,
           preferences,
           comment,
-          pref1Timeslot: preferences[0] ? pref1Timeslot : null,
-          pref2Timeslot: preferences[1] ? pref2Timeslot : null,
+          pref1Timeslot: preferences[0] ? timeslots : [],
+          pref2Timeslot: preferences[1] ? timeslots : [],
         }),
       });
       const data = (await response.json()) as {
@@ -412,7 +410,7 @@ export default function CandidateApplicationPage() {
 
                       return (
                         <div key={item.company_id || i} className="candidate-interview-card">
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                          <div className="candidate-interview-header">
                             <div className="candidate-interview-company">
                               {item.logo_url && (
                                 <img src={item.logo_url} alt={item.company_name} className="candidate-interview-logo" />
@@ -651,67 +649,75 @@ export default function CandidateApplicationPage() {
                           </select>
                         </div>
                       </label>
-
-                      {/* Time slot selector for Pref 1 & 2 only */}
-                      {(index === 0 || index === 1) && preference && (
-                        <div className="timeslot-group">
-                          <label>
-                            <span>Time Slot (required)</span>
-                            <div className="timeslot-select-wrap">
-                              <select
-                                value={index === 0 ? (pref1Timeslot ?? "") : (pref2Timeslot ?? "")}
-                                onChange={(e) => {
-                                  const val = e.target.value ? parseInt(e.target.value) : null;
-                                  if (index === 0) setPref1Timeslot(val);
-                                  else setPref2Timeslot(val);
-                                }}
-                                disabled={isSubmitting}
-                              >
-                                <option value="">Select a time slot</option>
-                                {[1, 2, 3, 4].map((slotNum) => {
-                                  const info = getSlotStatus(preference, slotNum);
-                                  const isFilled = info?.status === "filled";
-                                  return (
-                                    <option key={slotNum} value={slotNum} disabled={isFilled}>
-                                      Slot {slotNum}: {getSlotLabel(slotNum)}
-                                      {isFilled ? " (Full)" : ""}
-                                    </option>
-                                  );
-                                })}
-                              </select>
-                              {(() => {
-                                const selectedSlot = index === 0 ? pref1Timeslot : pref2Timeslot;
-                                if (!selectedSlot) return null;
-                                const info = getSlotStatus(preference, selectedSlot);
-                                if (!info) return null;
-                                if (info.status === "overcrowded") {
-                                  return (
-                                    <span className="timeslot-status timeslot-status--overcrowded">
-                                      This slot is overcrowded!
-                                    </span>
-                                  );
-                                }
-                                if (info.status === "filled") {
-                                  return (
-                                    <span className="timeslot-status timeslot-status--filled">
-                                      Sorry, this slot is filled!
-                                    </span>
-                                  );
-                                }
-                                return null;
-                              })()}
-                            </div>
-                          </label>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
               </section>
 
-              <section className="application-section" aria-labelledby="comment-title">
+              <section className="application-section" aria-labelledby="timeslot-title">
                 <div className="application-section__heading">
                   <span>04</span>
+                  <div>
+                    <h2 id="timeslot-title">Time slot preferences</h2>
+                  </div>
+                </div>
+
+                <div className="timeslot-priority-notice">
+                  <Info size={15} aria-hidden="true" />
+                  <span>
+                    Note: Your first preference receives the highest priority. However, choosing a company as your first preference does not guarantee placement. Even if slots are available, you may not be allocated to that company depending on the overall preference allocation process.
+                  </span>
+                </div>
+
+                {preferences[0] || preferences[1] ? (
+                  <div className="timeslot-checkbox-group">
+                    {[1, 2, 3, 4].map((slotNum) => {
+                      const checked = timeslots.includes(slotNum);
+                      // Overcrowded status reflects Preference 1's company only
+                      const info = preferences[0] ? getSlotStatus(preferences[0], slotNum) : undefined;
+                      const isOvercrowded = info?.status === "overcrowded";
+                      return (
+                        <label key={slotNum} className="timeslot-checkbox-item">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={isSubmitting}
+                            onChange={() => {
+                              setTimeslots((current) =>
+                                checked
+                                  ? current.filter((s) => s !== slotNum)
+                                  : [...current, slotNum].sort((a, b) => a - b),
+                              );
+                            }}
+                          />
+                          <span className="timeslot-checkbox-label">
+                            Slot {slotNum}: {getSlotLabel(slotNum)}
+                          </span>
+                          {info && (
+                            isOvercrowded ? (
+                              <span className="timeslot-status timeslot-status--overcrowded">
+                                Overcrowded!
+                              </span>
+                            ) : (
+                              <span className="timeslot-status timeslot-status--available">
+                                Available
+                              </span>
+                            )
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="timeslot-empty-hint">
+                    Select a company for Preference 1 or Preference 2 to choose time slots.
+                  </p>
+                )}
+              </section>
+
+              <section className="application-section" aria-labelledby="comment-title">
+                <div className="application-section__heading">
+                  <span>05</span>
                   <div>
                     <h2 id="comment-title">Comment</h2>
                     <p>Optional</p>
@@ -764,6 +770,8 @@ export default function CandidateApplicationPage() {
         ) : (
           <div className="signup-error" role="alert">{error}</div>
         )}
+
+        <CompanyGuide />
       </main>
 
 
