@@ -24,6 +24,7 @@ import {
 } from "@/lib/candidate-options";
 import SiteBackground from "../../site-background";
 import SiteHeader from "../../site-header";
+import CandidateInterviewSchedule from "../../candidate-interview-schedule";
 import CompanyGuide from "../company-guide";
 
 type CandidateProfile = {
@@ -571,6 +572,8 @@ export default function CandidateDashboardPage() {
             View your details, manage your CV, and update company preferences.
           </span>
         </header>
+
+        <CandidateInterviewSchedule variant="panel" />
 
         {isLoading ? (
           <div className="candidate-application-loading" role="status">

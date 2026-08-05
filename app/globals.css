@@ -671,7 +671,8 @@ html {
   width: min(100% - 3rem, 76rem);
   min-height: calc(100vh - 6.5rem);
   margin-inline: auto;
-  padding-block: clamp(4rem, 8vw, 8rem);
+  padding-top: clamp(1rem, 2vw, 5rem);
+  padding-bottom: clamp(4rem, 8vw, 8rem);
   align-items: center;
   gap: clamp(3rem, 8vw, 7rem);
 }
@@ -793,7 +794,7 @@ html {
 }
 
 .hero-preference-action {
-  width: 55%;
+  width: 61%;
   min-height: 3.75rem;
   border: 0;
   background: linear-gradient(135deg, #002454, #1688b2);
@@ -4100,12 +4101,36 @@ html {
       "hero-visual"
       "hero-copy";
     grid-template-columns: 1fr;
-    padding-block: 4.5rem;
-    gap: 4rem;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    gap: 2rem;
   }
 
   .hero-copy h1 {
     max-width: 10ch;
+  }
+
+  .hero-actions {
+    margin-top: 1.4rem;
+  }
+
+  .hero-actions-row {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+
+  .hero-actions-row a {
+    flex: 1 1 calc(50% - 0.35rem);
+    min-width: 0;
+  }
+
+  .hero-preference-action {
+    width: 100%;
+    margin-top: 0.05rem;
+    min-height: 3.25rem;
+    font-size: 0.94rem;
   }
 
   .hero-visual {
@@ -4157,6 +4182,50 @@ html {
 
   .application-section .timeslot-status {
     margin-left: auto;
+  }
+
+  /* Let the time/panel badges wrap under the company name on narrow screens
+     instead of squeezing it. */
+  .interview-schedule--hero {
+    max-width: none;
+    margin-bottom: 0.8rem;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .interview-schedule__head {
+    margin-bottom: 0.5rem;
+    gap: 0.35rem;
+  }
+
+  .interview-schedule__head h2 {
+    font-size: 0.72rem;
+  }
+
+  .interview-schedule__item {
+    gap: 0.45rem;
+    padding: 0.42rem 0.55rem;
+    flex-wrap: wrap;
+    row-gap: 0.4rem;
+  }
+
+  .interview-schedule__logo {
+    width: 1.72rem;
+    height: 1.72rem;
+  }
+
+  .interview-schedule__company {
+    flex: 1 1 8rem;
+    font-size: 0.78rem;
+  }
+
+  .interview-schedule__meta {
+    gap: 0.3rem;
+  }
+
+  .interview-schedule__time,
+  .interview-schedule__panel {
+    padding: 0.16rem 0.45rem;
+    font-size: 0.68rem;
   }
 
   /* Collapse the company guide from a table into stacked cards, using the
@@ -5134,6 +5203,124 @@ html {
   color: rgb(0 36 84 / 56%);
   font-size: 0.82rem;
   line-height: 1.5;
+}
+
+/* ── Candidate Interview Schedule ── */
+
+.interview-schedule {
+  border: 1.5px solid rgb(51 174 218 / 32%);
+  border-radius: 1rem;
+  padding: 0.9rem 1.05rem;
+  background: rgb(255 255 255 / 82%);
+  box-shadow: 0 0.6rem 1.8rem rgb(0 36 84 / 8%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.interview-schedule--hero {
+  max-width: 34rem;
+  margin-bottom: 1.5rem;
+}
+
+.interview-schedule--panel {
+  margin-top: 1.5rem;
+  background: #ffffff;
+}
+
+.interview-schedule__head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+  color: #1688b2;
+}
+
+.interview-schedule__head h2 {
+  margin: 0;
+  color: #002454;
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.interview-schedule__head h2 span {
+  color: rgb(0 36 84 / 45%);
+  font-weight: 700;
+  text-transform: none;
+}
+
+.interview-schedule__list {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  gap: 0.4rem;
+  list-style: none;
+}
+
+.interview-schedule__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid rgb(0 36 84 / 9%);
+  border-radius: 0.7rem;
+  padding: 0.5rem 0.65rem;
+  background: #f8fcfe;
+}
+
+.interview-schedule__logo {
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border: 1px solid rgb(0 36 84 / 8%);
+  border-radius: 0.45rem;
+  padding: 0.15rem;
+  background: #ffffff;
+  object-fit: contain;
+}
+
+.interview-schedule__logo--placeholder {
+  display: grid;
+  place-items: center;
+  color: rgb(0 36 84 / 45%);
+}
+
+.interview-schedule__company {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #002454;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.interview-schedule__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.interview-schedule__time {
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  background: rgb(246 196 48 / 25%);
+  color: #7a5c00;
+  font-size: 0.76rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.interview-schedule__panel {
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  background: rgb(51 174 218 / 14%);
+  color: #0e6d8e;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 /* ── Company Reference Guide ── */

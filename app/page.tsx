@@ -16,6 +16,7 @@ import galleryPhotoEleven from "../assets/gallery grid/DSC00654.jpg";
 import galleryPhotoTwelve from "../assets/gallery grid/new cf2024-0082.jpg";
 import ieeeSbWhiteLogo from "../assets/UOM IEEE SB LOGO - WHITE.png";
 import AboutStory from "./about-story";
+import CandidateInterviewSchedule from "./candidate-interview-schedule";
 import EventTimeline from "./event-timeline";
 import Preloader from "./preloader";
 import RegistrationComingSoonButton from "./registration-coming-soon-button";
@@ -158,6 +159,7 @@ export default function Home() {
       <main>
         <section className="home-hero" id="home">
           <div className="hero-copy">
+            <CandidateInterviewSchedule />
             <p className="hero-eyebrow">University of Moratuwa</p>
             <RotatingHeadline />
             <p className="hero-description">
