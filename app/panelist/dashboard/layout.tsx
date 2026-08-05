@@ -19,7 +19,7 @@ export default function PanelistLayout({ children }: { children: React.ReactNode
   return (
     <div className="flex min-h-screen bg-[#f8fcfe]">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-[#002454]/10 bg-white/70 shadow-[0_2rem_5rem_rgba(0,36,84,0.05)] backdrop-blur-xl flex flex-col justify-between">
+      <aside className="hidden md:flex w-64 border-r border-[#002454]/10 bg-white/70 shadow-[0_2rem_5rem_rgba(0,36,84,0.05)] backdrop-blur-xl flex-col justify-between">
         <div>
           <div className="flex h-16 items-center px-6 border-b border-[#002454]/10">
             <Link href="/panelist/dashboard" className="text-xl font-extrabold text-[#002454]">
@@ -99,18 +99,25 @@ export default function PanelistLayout({ children }: { children: React.ReactNode
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-[#002454]/10 bg-white/50 px-8 backdrop-blur-md">
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="flex h-16 items-center justify-between border-b border-[#002454]/10 bg-white/50 px-4 md:px-8 backdrop-blur-md">
           <h2 className="text-lg font-bold text-[#002454]">Panelist Dashboard</h2>
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-bold text-[#002454]/70">{userName}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold text-[#002454]/70 hidden sm:inline">{userName}</span>
             <div className="h-8 w-8 rounded-full bg-[#f6c430] flex items-center justify-center font-bold text-[#002454]">
               {userInitials}
             </div>
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="md:hidden flex items-center p-2 rounded-xl text-red-500 hover:bg-red-50"
+              title="Sign Out"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </header>
         
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto">
           {children}
         </main>
       </div>
