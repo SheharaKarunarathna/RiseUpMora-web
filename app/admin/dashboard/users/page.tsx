@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Plus, Mail, Building2, BookOpen, ChevronDown, Trash2, Search, X, SlidersHorizontal, User, Users, FileText, ListOrdered, Phone, GraduationCap, Eye } from "lucide-react";
+import { Loader2, Plus, Mail, Building2, BookOpen, ChevronDown, Trash2, Search, X, SlidersHorizontal, User, Users, FileText, ListOrdered, Phone, GraduationCap, Eye, CalendarClock } from "lucide-react";
 import { departmentsByFaculty } from "@/lib/candidate-options";
 
 type RoleType = "candidate" | "company_coordinator" | "department_coordinator" | "panelist";
@@ -37,6 +37,13 @@ export default function UserManagementPage() {
   const [isDeptDropdownOpen, setIsDeptDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewUser, setViewUser] = useState<any>(null); // State for the View Details modal
+
+  // Interview schedule assignment (inside the View Details modal)
+  const [schedule, setSchedule] = useState<any[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [newSlot, setNewSlot] = useState({ companyId: "", interviewTime: "", panelNumber: "1" });
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -88,6 +95,88 @@ export default function UserManagementPage() {
     }
   };
 
+  /** "10:15:00" -> "10.15 AM" */
+  const formatSlotTime = (value: string) => {
+    const [h, m] = String(value).split(":");
+    const hour = parseInt(h, 10);
+    if (isNaN(hour)) return value;
+    const period = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    return `${hour12}.${m ?? "00"} ${period}`;
+  };
+
+  const fetchSchedule = async (studentId: string) => {
+    if (!studentId) {
+      setSchedule([]);
+      return;
+    }
+    setScheduleLoading(true);
+    setScheduleError(null);
+    try {
+      const res = await fetch(
+        `/api/v1/admin/interview-schedule?studentId=${encodeURIComponent(studentId)}`,
+      );
+      const data = await res.json();
+      setSchedule(data.success ? data.schedule : []);
+    } catch {
+      setSchedule([]);
+    } finally {
+      setScheduleLoading(false);
+    }
+  };
+
+  const openViewUser = (user: any) => {
+    setViewUser(user);
+    setScheduleError(null);
+    setNewSlot({ companyId: "", interviewTime: "", panelNumber: "1" });
+    setSchedule([]);
+    fetchSchedule(user.student_id);
+  };
+
+  const handleAddSlot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setScheduleError(null);
+    setScheduleSaving(true);
+    try {
+      const res = await fetch("/api/v1/admin/interview-schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: viewUser?.student_id,
+          companyId: newSlot.companyId,
+          interviewTime: newSlot.interviewTime,
+          panelNumber: newSlot.panelNumber,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setScheduleError(data.error || "Unable to save the assignment");
+        return;
+      }
+      setNewSlot({ companyId: "", interviewTime: "", panelNumber: "1" });
+      await fetchSchedule(viewUser.student_id);
+    } catch {
+      setScheduleError("Unable to connect. Please try again.");
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
+  const handleDeleteSlot = async (id: string) => {
+    setScheduleError(null);
+    try {
+      const res = await fetch(`/api/v1/admin/interview-schedule?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setScheduleError(data.error || "Unable to remove the assignment");
+        return;
+      }
+      await fetchSchedule(viewUser.student_id);
+    } catch {
+      setScheduleError("Unable to connect. Please try again.");
+    }
+  };
+
   const fetchCompanies = async () => {
     try {
       const res = await fetch("/api/v1/company/getAllCompany");
@@ -118,11 +207,17 @@ export default function UserManagementPage() {
           u.student_id?.toLowerCase().includes(q);
         const matchesFaculty = !filterFaculty || u.faculty === filterFaculty;
         const matchesDept = !filterDept || u.department === filterDept;
+        // pref_1_timeslot / pref_2_timeslot are int[] since the multi-slot
+        // migration, so compare against the array contents (note an empty
+        // array is truthy, hence the explicit length checks).
+        const slotsOf = (v: any): number[] =>
+          Array.isArray(v) ? v : v === null || v === undefined || v === "" ? [] : [Number(v)];
+        const allSlots = [...slotsOf(u.pref_1_timeslot), ...slotsOf(u.pref_2_timeslot)];
         const matchesTimeslot =
           !filterTimeslot ||
           (filterTimeslot === "none"
-            ? !u.pref_1_timeslot && !u.pref_2_timeslot
-            : String(u.pref_1_timeslot) === filterTimeslot || String(u.pref_2_timeslot) === filterTimeslot);
+            ? allSlots.length === 0
+            : allSlots.map(String).includes(filterTimeslot));
         return matchesSearch && matchesFaculty && matchesDept && matchesTimeslot;
       });
     }
@@ -607,7 +702,7 @@ export default function UserManagementPage() {
                       <div className="flex items-center justify-end gap-2">
                         {activeTab === "candidate" && (
                           <button
-                            onClick={() => setViewUser(user)}
+                            onClick={() => openViewUser(user)}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-[#33aeda]/20 bg-[#33aeda]/10 hover:bg-[#33aeda]/20 px-2.5 py-1 text-xs font-bold text-[#1688b2] transition-colors"
                             title="View Candidate Profile"
                           >
@@ -872,14 +967,27 @@ export default function UserManagementPage() {
                               </span>
                             </div>
                             {(i === 0 || i === 1) && (
-                              <div className="ml-10 text-xs font-semibold">
-                                {pref.slot ? (
-                                  <span className="inline-flex items-center gap-1 rounded-md bg-[#1688b2]/10 px-2 py-0.5 text-[#1688b2]">
-                                    🕒 Slot {pref.slot}: {pref.slot === 1 ? "10:00 AM – 11:00 AM" : pref.slot === 2 ? "11:00 AM – 12:00 PM" : pref.slot === 3 ? "1:30 PM – 2:30 PM" : "2:30 PM – 3:30 PM"}
-                                  </span>
-                                ) : (
-                                  <span className="text-amber-600 italic">No time slot selected</span>
-                                )}
+                              <div className="ml-10 flex flex-wrap gap-1.5 text-xs font-semibold">
+                                {(() => {
+                                  // pref_1_timeslot / pref_2_timeslot are int[] since the
+                                  // multi-slot migration; tolerate a bare number too.
+                                  const slots: number[] = Array.isArray(pref.slot)
+                                    ? pref.slot
+                                    : pref.slot
+                                      ? [pref.slot as number]
+                                      : [];
+                                  if (slots.length === 0) {
+                                    return <span className="text-amber-600 italic">No time slot selected</span>;
+                                  }
+                                  return slots.map((s) => (
+                                    <span
+                                      key={s}
+                                      className="inline-flex items-center gap-1 rounded-md bg-[#1688b2]/10 px-2 py-0.5 text-[#1688b2]"
+                                    >
+                                      🕒 Slot {s}: {s === 1 ? "10:00 AM – 11:00 AM" : s === 2 ? "11:00 AM – 12:00 PM" : s === 3 ? "1:30 PM – 2:30 PM" : "2:30 PM – 3:30 PM"}
+                                    </span>
+                                  ));
+                                })()}
                               </div>
                             )}
                           </div>
@@ -890,6 +998,122 @@ export default function UserManagementPage() {
                       <span className="text-sm font-medium italic text-[#002454]/40">No preferences submitted</span>
                     </div>
                   )}
+
+                  {/* Interview schedule assignment */}
+                  <div className="mt-6 border-t border-[#002454]/10 pt-5">
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider text-[#002454]/50">
+                      <CalendarClock size={16} /> Interview Schedule
+                    </h3>
+
+                    {!viewUser.student_id ? (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800">
+                        This candidate has no university ID set, so an interview cannot be assigned.
+                      </div>
+                    ) : (
+                      <>
+                        {scheduleLoading ? (
+                          <div className="flex items-center gap-2 p-3 text-xs font-semibold text-[#002454]/60">
+                            <Loader2 size={14} className="animate-spin" /> Loading schedule…
+                          </div>
+                        ) : schedule.length > 0 ? (
+                          <div className="mb-4 space-y-2">
+                            {schedule.map((s) => (
+                              <div
+                                key={s.id}
+                                className="flex items-center gap-3 rounded-xl border border-[#002454]/10 bg-[#f8fcfe] p-2.5"
+                              >
+                                {s.logo_url ? (
+                                  <img
+                                    src={s.logo_url}
+                                    alt={s.company_name}
+                                    className="h-8 w-8 shrink-0 rounded-lg border border-[#002454]/10 bg-white object-contain p-0.5"
+                                  />
+                                ) : (
+                                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#002454]/10 bg-white text-[#002454]/40">
+                                    <Building2 size={15} />
+                                  </span>
+                                )}
+                                <span className="min-w-0 flex-1 text-sm font-bold text-[#002454]">
+                                  {s.company_name}
+                                </span>
+                                <span className="shrink-0 rounded-md bg-[#f6c430]/25 px-2 py-0.5 text-[11px] font-black text-[#7a5c00]">
+                                  {formatSlotTime(s.interview_time)}
+                                </span>
+                                <span className="shrink-0 rounded-md bg-[#33aeda]/15 px-2 py-0.5 text-[11px] font-black text-[#0e6d8e]">
+                                  Panel {s.panel_number}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSlot(s.id)}
+                                  title="Remove this interview"
+                                  className="shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mb-4 rounded-xl border border-dashed border-[#002454]/20 bg-[#f8fcfe] p-4 text-center">
+                            <span className="text-sm font-medium italic text-[#002454]/40">
+                              No interview assigned yet
+                            </span>
+                          </div>
+                        )}
+
+                        <form onSubmit={handleAddSlot} className="rounded-xl border border-[#002454]/10 bg-white p-3">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                            <select
+                              value={newSlot.companyId}
+                              onChange={(e) => setNewSlot((p) => ({ ...p, companyId: e.target.value }))}
+                              required
+                              className="w-full min-w-0 rounded-lg border border-[#002454]/15 bg-[#f8fcfe] px-3 py-2 text-sm font-semibold text-[#002454] outline-none focus:border-[#33aeda]"
+                            >
+                              <option value="">Select company…</option>
+                              {companies.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="time"
+                              step={900}
+                              value={newSlot.interviewTime}
+                              onChange={(e) => setNewSlot((p) => ({ ...p, interviewTime: e.target.value }))}
+                              required
+                              className="rounded-lg border border-[#002454]/15 bg-[#f8fcfe] px-3 py-2 text-sm font-semibold text-[#002454] outline-none focus:border-[#33aeda]"
+                            />
+                            <input
+                              type="number"
+                              min={1}
+                              value={newSlot.panelNumber}
+                              onChange={(e) => setNewSlot((p) => ({ ...p, panelNumber: e.target.value }))}
+                              required
+                              placeholder="Panel"
+                              title="Panel number"
+                              className="w-full rounded-lg border border-[#002454]/15 bg-[#f8fcfe] px-3 py-2 text-sm font-semibold text-[#002454] outline-none focus:border-[#33aeda] sm:w-24"
+                            />
+                          </div>
+
+                          {scheduleError && (
+                            <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600">
+                              {scheduleError}
+                            </p>
+                          )}
+
+                          <button
+                            type="submit"
+                            disabled={scheduleSaving}
+                            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[#002454] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#00337a] disabled:opacity-60"
+                          >
+                            {scheduleSaving ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+                            Assign interview
+                          </button>
+                        </form>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
