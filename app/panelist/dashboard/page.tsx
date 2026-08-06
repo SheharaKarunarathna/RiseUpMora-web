@@ -2,8 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { query } from "@/lib/db";
-import { fetchCompanyCandidates } from "@/lib/company-data";
-import PreferenceTableClient from "@/app/company/dashboard/PreferenceTableClient";
+import { fetchCompanySchedule } from "@/lib/company-data";
+import ScheduleTableClient from "@/app/company/dashboard/ScheduleTableClient";
 import { Building2, CheckCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -34,11 +34,11 @@ export default async function PanelistDashboardPage() {
 
   const panelist = panelistRes.rows[0];
 
-  // 2. Fetch united candidate applications for panelist's company
-  const { unitedCandidates = [] } = await fetchCompanyCandidates(panelist.company_id);
+  // 2. Fetch interview schedule for panelist's company
+  const scheduleCandidates = await fetchCompanySchedule(panelist.company_id);
 
-  const totalCandidateCount = unitedCandidates.length;
-  const totalInterviewedCount = unitedCandidates.filter((c: any) => c.is_interviewed).length;
+  const totalCandidateCount = scheduleCandidates.length;
+  const totalInterviewedCount = scheduleCandidates.filter((c: any) => c.is_interviewed).length;
 
   return (
     <div className="flex flex-col gap-8 max-w-6xl mx-auto">
@@ -100,24 +100,21 @@ export default async function PanelistDashboardPage() {
         </div>
       </div>
 
-      {/* United Candidate Applications Table Section */}
+      {/* Interview Schedule Table */}
       <div className="flex flex-col gap-6">
         <div className="border-b border-[#002454]/10 pb-4">
           <h2 className="text-xl font-extrabold text-[#002454]">
-            Candidate Applications
+            Interview Schedule
           </h2>
           <p className="text-xs text-[#002454]/60 mt-0.5">
-            United candidate list for {panelist.company_name}. Use actions to evaluate candidates and mark interview status.
+            Assigned interview times for {panelist.company_name}, ordered by schedule.
           </p>
         </div>
 
         <div className="flex flex-col gap-8 w-full">
-          <PreferenceTableClient
-            title="All Applicants"
-            subtitle={`All unique candidates who selected ${panelist.company_name} as a preference`}
-            candidates={unitedCandidates}
-            showSlotFilter={false}
-            showPrefBadge={false}
+          <ScheduleTableClient
+            candidates={scheduleCandidates}
+            companyName={panelist.company_name}
             showEvaluate={true}
           />
         </div>

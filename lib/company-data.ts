@@ -270,3 +270,45 @@ export async function fetchCompanyCandidates(companyId: string) {
     totalInterviewedCount,
   };
 }
+
+/**
+ * Fetch the real interview schedule for a company from the
+ * `interview_schedule` table.  Returns candidates ordered by
+ * interview_time then panel_number.
+ */
+export async function fetchCompanySchedule(companyId: string) {
+  try {
+    const res = await query(
+      `SELECT s.id   AS schedule_id,
+              s.student_id,
+              s.panel_number,
+              s.interview_time,
+              c.id   AS candidate_id,
+              u.name AS candidate_name,
+              u.email,
+              c.department,
+              c.contact_number,
+              c.cv_url,
+              c.application_comment,
+              c.created_at,
+              COALESCE(c.is_interviewed, FALSE) AS is_interviewed,
+              f.id   AS feedback_id
+       FROM interview_schedule s
+       JOIN candidates c ON c.student_id = s.student_id
+       JOIN users u       ON c.user_id   = u.id
+       LEFT JOIN feedback f ON f.candidate_id = c.id
+                            AND f.company_id  = s.company_id
+       WHERE s.company_id = $1
+       ORDER BY s.interview_time ASC, s.panel_number ASC`,
+      [companyId],
+    );
+    return res.rows;
+  } catch (error: unknown) {
+    // Table may not exist yet — return empty gracefully
+    if ((error as { code?: string })?.code === "42P01") {
+      return [];
+    }
+    console.error("Error fetching company schedule:", error);
+    return [];
+  }
+}

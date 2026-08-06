@@ -6,7 +6,8 @@ import Image from "next/image";
 import { Building2, Calendar, CheckCircle, Clock, Layers } from "lucide-react";
 import Link from "next/link";
 import PreferenceTableClient from "./PreferenceTableClient";
-import { fetchCompanyCandidates } from "@/lib/company-data";
+import ScheduleTableClient from "./ScheduleTableClient";
+import { fetchCompanyCandidates, fetchCompanySchedule } from "@/lib/company-data";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export default async function CompanyDashboardOverview(props: {
   searchParams: Promise<{ view?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const viewMode = searchParams.view || "timeslot"; // 'timeslot' (default 4 tables) or 'preference'
+  const viewMode = searchParams.view || "schedule"; // 'schedule' (default) | 'timeslot' | 'preference'
   const session = await getServerSession(authOptions);
 
   if (!session || session.user.role !== "company_coordinator") {
@@ -30,6 +31,7 @@ export default async function CompanyDashboardOverview(props: {
   let slot3Candidates: any[] = [];
   let slot4Candidates: any[] = [];
   let unassignedCandidates: any[] = [];
+  let scheduleCandidates: any[] = [];
 
   let pref1Candidates: any[] = [];
   let pref2Candidates: any[] = [];
@@ -52,7 +54,10 @@ export default async function CompanyDashboardOverview(props: {
       companyLogo = company.logo_url;
       companyId = company.id;
 
-      const data = await fetchCompanyCandidates(companyId);
+      const [data, scheduleData] = await Promise.all([
+        fetchCompanyCandidates(companyId),
+        fetchCompanySchedule(companyId),
+      ]);
       slot1Candidates = data.slot1Candidates;
       slot2Candidates = data.slot2Candidates;
       slot3Candidates = data.slot3Candidates;
@@ -63,6 +68,7 @@ export default async function CompanyDashboardOverview(props: {
       pref2Candidates = data.pref2Candidates;
       pref3Candidates = data.pref3Candidates;
       pref4Candidates = data.pref4Candidates;
+      scheduleCandidates = scheduleData;
     }
   } catch (error) {
     console.error("Error loading dashboard data:", error);
@@ -135,20 +141,36 @@ export default async function CompanyDashboardOverview(props: {
         </div>
       </div>
 
-      {/* 4 Time Slot Tables Section */}
+      {/* Candidate Tables Section */}
       <div className="flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#002454]/10 pb-4">
           <div>
             <h2 className="text-xl font-extrabold text-[#002454]">
-              Candidate Applications per Time Slot
+              {viewMode === "schedule"
+                ? "Interview Schedule"
+                : viewMode === "timeslot"
+                ? "Candidate Applications per Time Slot"
+                : "Candidate Preferences"}
             </h2>
             <p className="text-xs text-[#002454]/60">
-              Priority is given to 1st Preference candidates, ordered chronologically by application time (FCFS).
+              {viewMode === "schedule"
+                ? "Assigned interview times from the official schedule, ordered by time & panel."
+                : "Priority is given to 1st Preference candidates, ordered chronologically by application time (FCFS)."}
             </p>
           </div>
 
-          {/* View Mode Switch */}
+          {/* View Mode Switch — 3 options */}
           <div className="flex items-center bg-[#f8fcfe] border border-[#002454]/10 p-1 rounded-xl">
+            <Link
+              href="/company/dashboard?view=schedule"
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === "schedule"
+                  ? "bg-[#002454] text-white shadow-sm"
+                  : "text-[#002454]/60 hover:text-[#002454]"
+              }`}
+            >
+              <Calendar size={13} /> Interview Schedule
+            </Link>
             <Link
               href="/company/dashboard?view=timeslot"
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
@@ -157,7 +179,7 @@ export default async function CompanyDashboardOverview(props: {
                   : "text-[#002454]/60 hover:text-[#002454]"
               }`}
             >
-              <Clock size={13} /> 4 Time Slot Tables
+              <Clock size={13} /> 4 Time Slots
             </Link>
             <Link
               href="/company/dashboard?view=preference"
@@ -167,12 +189,17 @@ export default async function CompanyDashboardOverview(props: {
                   : "text-[#002454]/60 hover:text-[#002454]"
               }`}
             >
-              <Layers size={13} /> 4 Preference Tables
+              <Layers size={13} /> 4 Preferences
             </Link>
           </div>
         </div>
 
-        {viewMode === "timeslot" ? (
+        {viewMode === "schedule" ? (
+          <ScheduleTableClient
+            candidates={scheduleCandidates}
+            companyName={companyName}
+          />
+        ) : viewMode === "timeslot" ? (
           <div className="flex flex-col gap-8">
             {/* The 4 Time Slot Tables (Stacked Vertically One by One) */}
             <div className="flex flex-col gap-8 w-full">
