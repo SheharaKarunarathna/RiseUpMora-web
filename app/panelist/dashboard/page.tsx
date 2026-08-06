@@ -2,13 +2,19 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { query } from "@/lib/db";
-import { fetchCompanySchedule } from "@/lib/company-data";
+import { fetchCompanyCandidates, fetchCompanySchedule } from "@/lib/company-data";
 import ScheduleTableClient from "@/app/company/dashboard/ScheduleTableClient";
-import { Building2, CheckCircle } from "lucide-react";
+import PreferenceTableClient from "@/app/company/dashboard/PreferenceTableClient";
+import { Building2, Calendar, CheckCircle, Users } from "lucide-react";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function PanelistDashboardPage() {
+export default async function PanelistDashboardPage(props: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const searchParams = await props.searchParams;
+  const viewMode = searchParams.view || "schedule"; // 'schedule' (default) | 'all'
   const session = await getServerSession(authOptions);
 
   if (!session || session.user.role !== "panelist") {
@@ -34,11 +40,16 @@ export default async function PanelistDashboardPage() {
 
   const panelist = panelistRes.rows[0];
 
-  // 2. Fetch interview schedule for panelist's company
-  const scheduleCandidates = await fetchCompanySchedule(panelist.company_id);
+  // 2. Fetch interview schedule & all preferred candidates for panelist's company
+  const [scheduleCandidates, companyCandidates] = await Promise.all([
+    fetchCompanySchedule(panelist.company_id),
+    fetchCompanyCandidates(panelist.company_id),
+  ]);
 
-  const totalCandidateCount = scheduleCandidates.length;
-  const totalInterviewedCount = scheduleCandidates.filter((c: any) => c.is_interviewed).length;
+  const activeCandidates =
+    viewMode === "all" ? companyCandidates.unitedCandidates : scheduleCandidates;
+  const totalCandidateCount = activeCandidates.length;
+  const totalInterviewedCount = activeCandidates.filter((c: any) => c.is_interviewed).length;
 
   return (
     <div className="flex flex-col gap-8 max-w-6xl mx-auto">
@@ -74,7 +85,7 @@ export default async function PanelistDashboardPage() {
         <div className="rounded-2xl border border-[#002454]/10 bg-white p-6 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-wider text-[#002454]/50">
-              Total Applicants
+              {viewMode === "all" ? "Total Applicants" : "Total Scheduled"}
             </p>
             <p className="mt-2 text-3xl font-extrabold text-[#002454]">
               {totalCandidateCount}
@@ -100,23 +111,62 @@ export default async function PanelistDashboardPage() {
         </div>
       </div>
 
-      {/* Interview Schedule Table */}
+      {/* Candidate Tables Section */}
       <div className="flex flex-col gap-6">
-        <div className="border-b border-[#002454]/10 pb-4">
-          <h2 className="text-xl font-extrabold text-[#002454]">
-            Interview Schedule
-          </h2>
-          <p className="text-xs text-[#002454]/60 mt-0.5">
-            Assigned interview times for {panelist.company_name}, ordered by schedule.
-          </p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#002454]/10 pb-4">
+          <div>
+            <h2 className="text-xl font-extrabold text-[#002454]">
+              {viewMode === "all" ? "All Preferred Candidates" : "Interview Schedule"}
+            </h2>
+            <p className="text-xs text-[#002454]/60 mt-0.5">
+              {viewMode === "all"
+                ? `All candidates who selected ${panelist.company_name} in any preference and time slot.`
+                : `Assigned interview times for ${panelist.company_name}, ordered by schedule.`}
+            </p>
+          </div>
+
+          {/* View Mode Switcher */}
+          <div className="flex items-center bg-[#f8fcfe] border border-[#002454]/10 p-1 rounded-xl">
+            <Link
+              href="/panelist/dashboard?view=schedule"
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === "schedule"
+                  ? "bg-[#002454] text-white shadow-sm"
+                  : "text-[#002454]/60 hover:text-[#002454]"
+              }`}
+            >
+              <Calendar size={13} /> Interview Schedule
+            </Link>
+            <Link
+              href="/panelist/dashboard?view=all"
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === "all"
+                  ? "bg-[#002454] text-white shadow-sm"
+                  : "text-[#002454]/60 hover:text-[#002454]"
+              }`}
+            >
+              <Users size={13} /> All Preferred Candidates
+            </Link>
+          </div>
         </div>
 
         <div className="flex flex-col gap-8 w-full">
-          <ScheduleTableClient
-            candidates={scheduleCandidates}
-            companyName={panelist.company_name}
-            showEvaluate={true}
-          />
+          {viewMode === "all" ? (
+            <PreferenceTableClient
+              title="All Preferred Candidates"
+              subtitle={`Candidates who selected ${panelist.company_name} in any preference or time slot`}
+              candidates={companyCandidates.unitedCandidates}
+              showPrefBadge={false}
+              showEvaluate={true}
+              showSlotFilter={true}
+            />
+          ) : (
+            <ScheduleTableClient
+              candidates={scheduleCandidates}
+              companyName={panelist.company_name}
+              showEvaluate={true}
+            />
+          )}
         </div>
       </div>
     </div>
